@@ -71,6 +71,8 @@ export function stepsFor(ev: GameEvent): AnimStep[] {
         { caption: '🦈 ¡El tiburón vuelve a una guarida!', ms: 500, fx: still({ shark: { current: ev.from, facing: null }, currents: [ev.from], color: COLORS.shark }) },
         { caption: '🦈 ¡El tiburón vuelve a una guarida!', ms: 800, fx: still({ shark: { current: ev.to, facing: null }, currents: [ev.to], color: COLORS.shark }) },
       ];
+    case 'roll':
+      return [{ caption: `🎲 El tiburón tira ${n(ev.count, 'dado', 'dados')}`, ms: 700, fx: still({ color: COLORS.shark }) }];
     case 'search':
       return ev.mode === 'buscar'
         ? [{ caption: '🔍 El tiburón busca aquí', ms: 1100, fx: still({ zones: [ev.zone], color: COLORS.search, icon: '🔍' }) }]

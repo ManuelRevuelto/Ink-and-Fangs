@@ -30,4 +30,4 @@ npm run build    # versión para publicar en dist/
 | `docs/` | Reglas originales, diseño del contenido y decisiones de reglas |
 | `tests/` | Tests con Vitest |
 
-Los gráficos actuales son provisionales (formas y emojis): se cambian en `src/ui/board.ts` y `src/ui/style.css`.
+Los gráficos actuales son provisionales (formas y emojis). Para poner los tuyos basta con dejar imágenes en `public/assets/`: mira [docs/graficos.md](docs/graficos.md).

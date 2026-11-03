@@ -3,6 +3,7 @@ import type { FoodId } from '../data/octopusCards';
 import type { Block, Die } from '../engine/types';
 import { HIDDEN, type PlayerView } from '../engine/view';
 import type { AskSpec, Pick } from './ask';
+import { asset, blockAssetKey, type AssetKey } from './assets';
 
 /**
  * Tablero en Canvas con gráficos PROVISIONALES (formas + emojis).
@@ -264,6 +265,8 @@ export function drawBoard(ctx: CanvasRenderingContext2D, v: PlayerView, spec: As
   ctx.clearRect(0, 0, SIZE, SIZE);
   ctx.fillStyle = '#0b2733';
   ctx.fillRect(0, 0, SIZE, SIZE);
+  const bg = asset('fondo');
+  if (bg) ctx.drawImage(bg, 0, 0, SIZE, SIZE);
   // Halo de agua alrededor del bosque de algas
   ctx.beginPath();
   ctx.arc(CX, CY, R + 22, 0, Math.PI * 2);
@@ -278,6 +281,18 @@ export function drawBoard(ctx: CanvasRenderingContext2D, v: PlayerView, spec: As
     tracePolygon(ctx, ZONE_OUTLINES[z.id]);
     ctx.fillStyle = C[z.kind];
     ctx.fill();
+    const texture = asset(z.kind);
+    if (texture) {
+      // La imagen de la zona se recorta con su forma.
+      ctx.save();
+      tracePolygon(ctx, ZONE_OUTLINES[z.id]);
+      ctx.clip();
+      const xs = ZONE_OUTLINES[z.id].map((p) => p[0]);
+      const ys = ZONE_OUTLINES[z.id].map((p) => p[1]);
+      const [x0, y0] = [Math.min(...xs), Math.min(...ys)];
+      ctx.drawImage(texture, x0, y0, Math.max(...xs) - x0, Math.max(...ys) - y0);
+      ctx.restore();
+    }
 
     const sp = v.spaces[z.id];
     const [bx, by] = blockRect(z.id);
@@ -289,10 +304,12 @@ export function drawBoard(ctx: CanvasRenderingContext2D, v: PlayerView, spec: As
         roundRect(ctx, bx, by, BLOCK_W, BLOCK_H, 8);
         ctx.fill();
         const { icon, label } = blockIcon(block);
-        ctx.font = '30px system-ui';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(icon, bx + BLOCK_W / 2, by + 29);
+        if (!drawAsset(ctx, blockAssetKey(block), bx + 6, by + 4, BLOCK_W - 12, 50)) {
+          ctx.font = '30px system-ui';
+          ctx.fillText(icon, bx + BLOCK_W / 2, by + 29);
+        }
         ctx.fillStyle = '#333';
         ctx.font = '11px system-ui';
         ctx.fillText(label, bx + BLOCK_W / 2, by + 58);
@@ -300,21 +317,25 @@ export function drawBoard(ctx: CanvasRenderingContext2D, v: PlayerView, spec: As
         ctx.fillStyle = C.blockBack;
         roundRect(ctx, bx, by, BLOCK_W, BLOCK_H, 8);
         ctx.fill();
+        drawAsset(ctx, 'oculto', bx, by, BLOCK_W, BLOCK_H);
         ctx.strokeStyle = '#4b8aa3';
         ctx.lineWidth = 2;
+        roundRect(ctx, bx, by, BLOCK_W, BLOCK_H, 8);
         ctx.stroke();
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         if (block) {
           // El pulpo ve qué hay debajo, en tenue.
           ctx.globalAlpha = 0.55;
-          ctx.font = '26px system-ui';
-          ctx.fillText(blockIcon(block).icon, bx + BLOCK_W / 2, by + 29);
+          if (!drawAsset(ctx, blockAssetKey(block), bx + 10, by + 8, BLOCK_W - 20, 42)) {
+            ctx.font = '26px system-ui';
+            ctx.fillText(blockIcon(block).icon, bx + BLOCK_W / 2, by + 29);
+          }
           ctx.globalAlpha = 1;
           ctx.fillStyle = '#9cc7d6';
           ctx.font = '11px system-ui';
           ctx.fillText('oculto', bx + BLOCK_W / 2, by + 58);
-        } else {
+        } else if (!asset('oculto')) {
           ctx.fillStyle = '#9cc7d6';
           ctx.font = 'bold 30px system-ui';
           ctx.fillText('?', bx + BLOCK_W / 2, by + BLOCK_H / 2);
@@ -422,6 +443,7 @@ function drawShark(ctx: CanvasRenderingContext2D, pos: { current: number; facing
     ctx.lineTo(cx + ux * 38 + uy * 8, cy + uy * 38 - ux * 8);
     ctx.fill();
   }
+  if (drawAsset(ctx, 'tiburon', cx - 24, cy - 24, 48, 48)) return;
   ctx.beginPath();
   ctx.arc(cx, cy, 20, 0, Math.PI * 2);
   ctx.fillStyle = 'rgba(255,255,255,0.9)';
@@ -430,4 +452,15 @@ function drawShark(ctx: CanvasRenderingContext2D, pos: { current: number; facing
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('🦈', cx, cy + 1);
+}
+
+/** Dibuja la imagen definitiva si existe (manteniendo su proporción). Devuelve si la ha dibujado. */
+function drawAsset(ctx: CanvasRenderingContext2D, key: AssetKey, x: number, y: number, w: number, h: number): boolean {
+  const img = asset(key);
+  if (!img) return false;
+  const scale = Math.min(w / img.width, h / img.height);
+  const dw = img.width * scale;
+  const dh = img.height * scale;
+  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+  return true;
 }

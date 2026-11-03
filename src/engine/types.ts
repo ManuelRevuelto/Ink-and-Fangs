@@ -103,7 +103,8 @@ export type GameEvent =
   | { k: 'currentsRemoved'; currents: number[] }
   | { k: 'move'; from: number; fromFacing: number | null; path: number[] }
   | { k: 'teleport'; from: number; to: number }
-  | { k: 'search'; zone: number; mode: 'buscar' | 'atacar'; octo: boolean };
+  | { k: 'search'; zone: number; mode: 'buscar' | 'atacar'; octo: boolean }
+  | { k: 'roll'; count: number };
 
 export interface GameState {
   rng: number;

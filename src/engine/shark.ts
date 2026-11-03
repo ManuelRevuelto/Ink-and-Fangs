@@ -75,6 +75,7 @@ export function sharkAction(s: GameState, a: SharkAction) {
     case 'tirar': {
       requirePhase(s, 'tiburon-robar');
       t.pool = t.drawn.map((c) => newDie(s, c));
+      emit(s, { k: 'roll', count: t.pool.length });
       t.drawn = [];
       s.phase = 'tiburon-tirado';
       log(s, `El tiburón tira: ${t.pool.map((d) => `${d.color} ${d.value}`).join(', ')}.`);
@@ -216,6 +217,7 @@ function useSharkCard(s: GameState, card: string, params: NonNullable<Extract<Sh
       if (!c) fail('La bolsa está vacía');
       consume();
       t.pool.push(newDie(s, c));
+      emit(s, { k: 'roll', count: 1 });
       return;
     }
     case 'reactivo': {

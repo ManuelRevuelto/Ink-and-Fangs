@@ -5,6 +5,10 @@ import { actors, newGame, tryAction, viewFor, type GameState, type Role } from '
 import { ask, Cancel, currentSpec, offer, onAskChange } from './ask';
 import { drawBoard, hitTest, SIZE, type Fx } from './board';
 import { stepsFor } from './replay';
+import { isMuted, play, setMuted, soundForEvent } from './sound';
+import { HELP_HTML } from './help';
+import { loadAssets } from './assets';
+import type { GameEvent } from '../engine/types';
 import { nextAction, resetTentative, UiError } from './flows';
 import { pickFromEvent, renderLog, renderOctopusPanel, renderPromptBar, renderSharkPanel } from './panels';
 import type { Pick } from './ask';
@@ -28,6 +32,7 @@ let animating = false;
 let skipAnim = false;
 let animSpeed = 1; // 0 = sin animaciones (tests)
 let seen: Record<Role, number> = { pulpo: 0, tiburon: 0 }; // eventos ya vistos por cada jugador
+const rolledDice = new Set<number>(); // dados ya mostrados (los nuevos se animan al aparecer)
 
 /** Velocidad de las animaciones (0 las desactiva). */
 export function setAnimationSpeed(speed: number) {
@@ -55,27 +60,45 @@ function render() {
   $('prompt-bar').innerHTML =
     renderPromptBar(spec, error, waiting) + (animating ? '<button id="skip-anim">⏩ Saltar animación</button>' : '');
   $('log').innerHTML = renderLog(v);
+  markRollingDice();
   const levelText = mode.kind === 'ai' ? ` · Máquina: ${DIFFICULTY_NAMES[mode.level]}` : ' · 2 jugadores';
   $('viewer').textContent = `Estás viendo como: ${ROLE_NAME[viewer]}${levelText}`;
 }
 
 // ---------------- Animaciones ----------------
 
-/** Reproduce en el tablero los eventos que `role` aún no ha visto. */
+/** Los dados que aparecen por primera vez en el panel «ruedan». */
+function markRollingDice() {
+  document.querySelectorAll<HTMLElement>('#tiburon-panel .die[data-pick]').forEach((el) => {
+    const id = JSON.parse(el.dataset.pick!).id as number;
+    if (rolledDice.has(id)) return;
+    rolledDice.add(id);
+    if (animSpeed > 0) el.classList.add('rolling');
+  });
+}
+
+/** Reproduce en el tablero los eventos que `role` aún no ha visto (lo que hizo el rival). */
 async function replayFor(role: Role, token: number) {
   if (!state) return;
   const events = state.events.slice(seen[role]);
   seen[role] = state.events.length;
+  await animateEvents(events, token, 1);
+}
+
+/** Anima una lista de eventos con sonido. speed > 1 = más rápido (para tus propias acciones). */
+async function animateEvents(events: GameEvent[], token: number, speed: number) {
   if (!events.length || animSpeed === 0) return;
   animating = true;
   skipAnim = false;
   const prevWaiting = waiting;
   for (const ev of events) {
+    if (skipAnim || token !== gameToken) break;
+    play(soundForEvent(ev));
     for (const step of stepsFor(ev)) {
       if (skipAnim || token !== gameToken) break;
       waiting = step.caption;
       render();
-      const ms = step.ms / animSpeed;
+      const ms = step.ms / (animSpeed * speed);
       const start = performance.now();
       while (!skipAnim && token === gameToken) {
         const t = (performance.now() - start) / ms;
@@ -93,6 +116,14 @@ async function replayFor(role: Role, token: number) {
 }
 
 // ---------------- Pantallas ----------------
+
+/** Ayuda: va en su propia capa para poder abrirla en cualquier momento sin romper la partida. */
+export function showHelp() {
+  const el = $('help');
+  el.innerHTML = `<div class="overlay-box help-box">${HELP_HTML}<button class="primary" id="help-close">Entendido</button></div>`;
+  el.classList.remove('hidden');
+  $('help-close').addEventListener('click', () => el.classList.add('hidden'), { once: true });
+}
 
 function overlay(html: string): HTMLElement {
   const el = $('overlay');
@@ -132,9 +163,14 @@ export async function showMenu() {
       <button data-value="ai-pulpo">🤖 Contra la máquina: juego con el pulpo</button>
       <button data-value="ai-tiburon">🤖 Contra la máquina: juego con el tiburón</button>
     </div>
+    <p><button data-value="help">📖 ¿Cómo se juega?</button></p>
     <p class="small">La máquina razona con los dos: el tiburón deduce dónde estás y el pulpo intenta despistarte.</p>`);
   const choice = await waitButton(el);
   hideOverlay();
+  if (choice === 'help') {
+    showHelp();
+    return showMenu();
+  }
   if (choice === 'local') mode = { kind: 'local' };
   else {
     const human: Role = choice === 'ai-pulpo' ? 'pulpo' : 'tiburon';
@@ -157,6 +193,7 @@ async function startGame() {
   const token = ++gameToken;
   const seed = Math.floor(Math.random() * 2 ** 31);
   resetTentative();
+  rolledDice.clear();
   error = null;
   seen = { pulpo: 0, tiburon: 0 };
 
@@ -204,9 +241,12 @@ async function gameLoop(token: number) {
       if (token !== gameToken) return;
       const res = tryAction(state, role, action);
       if (res.ok) {
+        const before = state.events.length;
         state = res.state;
-        seen[role] = state.events.length; // lo propio no se reanima
+        seen[role] = state.events.length;
         error = null;
+        // Tus propias acciones se animan rápido, para ver qué ha cambiado.
+        await animateEvents(state.events.slice(before), token, 2.5);
       } else error = res.error;
     } catch (e) {
       if (e instanceof Cancel) error = null;
@@ -217,6 +257,8 @@ async function gameLoop(token: number) {
   if (state?.winner && token === gameToken) {
     waiting = null;
     render();
+    const iLost = mode.kind === 'ai' && state.winner !== mode.human;
+    if (animSpeed > 0) play(iLost ? 'lose' : 'win');
     const el = overlay(`
       <h1>${state.winner === 'pulpo' ? '🐙 ¡Gana el pulpo!' : '🦈 ¡Gana el tiburón!'}</h1>
       <p>${state.winReason ?? ''}</p>
@@ -260,9 +302,18 @@ export function initApp() {
     }
     if ((e.target as HTMLElement).closest('#board')) return;
     const p = pickFromEvent(e);
-    if (p) offer(p);
+    if (p && offer(p) && animSpeed > 0) play('click');
   });
   $('menu-btn').addEventListener('click', () => showMenu());
+  const muteBtn = $('mute-btn');
+  const paintMute = () => (muteBtn.textContent = isMuted() ? '🔇' : '🔊');
+  paintMute();
+  muteBtn.addEventListener('click', () => {
+    setMuted(!isMuted());
+    paintMute();
+  });
+  $('help-btn').addEventListener('click', () => showHelp());
   onAskChange(() => render());
+  loadAssets(() => render()); // tus gráficos definitivos, si están en public/assets/
   showMenu();
 }
