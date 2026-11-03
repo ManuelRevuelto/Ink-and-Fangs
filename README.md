@@ -9,7 +9,8 @@ mientras un **tiburón** lo caza tirando dados para nadar, buscar y atacar.
 
 ## Modos de juego
 - 2 jugadores en el mismo ordenador (con pantalla de «pasa el turno»).
-- Contra la máquina, llevando el pulpo o el tiburón.
+- Contra la máquina, llevando el pulpo o el tiburón (niveles Fácil, Normal y Difícil).
+- **Online**: cada jugador en su dispositivo, con salas por código. Ver [docs/online.md](docs/online.md).
 
 ## Cómo arrancarlo
 ```bash
@@ -18,6 +19,7 @@ npm run dev      # abre http://localhost:5173
 npm test         # tests de reglas, simulación de partidas e interfaz
 npm run torneo   # torneo IA contra IA: % de victorias de cada papel (para equilibrar cartas)
 npm run build    # versión para publicar en dist/
+npm start        # servidor de producción: juego + salas online (tras npm run build)
 ```
 
 ## Estructura
@@ -27,6 +29,7 @@ npm run build    # versión para publicar en dist/
 | `src/engine/` | Motor de reglas puro y determinista (sin interfaz) |
 | `src/ui/` | Interfaz: tablero en Canvas, paneles, flujos guiados y animaciones |
 | `src/ai/` | Jugadores de la máquina |
+| `src/net/` y `server/` | Modo online: protocolo, conexión del navegador y servidor de salas |
 | `docs/` | Reglas originales, diseño del contenido y decisiones de reglas |
 | `tests/` | Tests con Vitest |
 
