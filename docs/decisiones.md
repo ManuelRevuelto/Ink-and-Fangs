@@ -12,6 +12,7 @@ Registro de lo que hemos decidido cuando las reglas dejaban dudas. El motor impl
 - **Cartas jugadas** van a la pila de descarte y se rebarajan cuando se acaba el mazo.
 - **Acción «descartar 1 y ocultar 1»:** la carta va a la pila de descarte (no sale del juego).
 - **Efectos que dicen «descartar/deshacer una carta»:** esa carta sale del juego.
+- **Cartas de comer:** al usarse se gastan para siempre: salen de la partida (no van al descarte ni se vuelven a robar).
 - Conchas de repuesto (al comer): ilimitadas.
 - Al aprender un bloque, se cambia por un bloque revelado del tablero que no sea el pulpo ni comida.
 

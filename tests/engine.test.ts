@@ -224,3 +224,19 @@ describe('simulación con jugadores aleatorios', () => {
     expect(wins.pulpo + wins.tiburon).toBeGreaterThan(250);
   }, 60_000);
 });
+
+describe('cartas de comer', () => {
+  it('al usarse salen de la partida y no vuelven al mazo', () => {
+    let s = newGame({ seed: 7 });
+    const food = Object.values(s.blocks).find((b) => b.kind === 'comida' && b.food === 'langosta')!;
+    const pz = octopusZone(s);
+    const fz = BOARD.zones[pz].adjacentZones[0];
+    s.spaces[fz] = { block: food.id, revealed: false };
+    s.pulpo.hand = ['comer-langosta#1', 'camuflaje#1'];
+    s = applyAction(s, 'pulpo', { type: 'jugar', card: 'comer-langosta#1', pay: [] });
+    s = applyAction(s, 'pulpo', { type: 'descartarOcultar', card: 'camuflaje#1' });
+    s = applyAction(s, 'pulpo', { type: 'finTurno' });
+    expect(s.pulpo.removed).toContain('comer-langosta#1');
+    expect([...s.pulpo.discard, ...s.pulpo.deck, ...s.pulpo.hand]).not.toContain('comer-langosta#1');
+  });
+});

@@ -14,7 +14,7 @@ export const HELP_HTML = `
     </ul>
     <p><b>Moverse</b>: intercambiar bloques vecinos o barajarlos (el tiburón pierde la pista).
     <b>Esconderse</b>: volver a ocultar bloques. <b>Aprender</b>: conseguir cartas o bloques nuevos (trampas, comida…).
-    <b>Comer</b>: con el pulpo junto a la comida y su carta en la mano. Cada comida da un poder especial.</p>
+    <b>Comer</b>: con el pulpo junto a la comida y su carta en la mano. La carta de comer se gasta para siempre y cada comida da un poder especial.</p>
     <p>💡 Revelar un bloque da pistas al tiburón: paga con bloques que ya haya descartado.</p>
   </section>
   <section>

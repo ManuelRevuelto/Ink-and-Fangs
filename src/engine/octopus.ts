@@ -244,7 +244,9 @@ export function octopusAction(s: GameState, a: OctopusAction) {
       pay(s, def.cost, a.pay);
       log(s, `El pulpo juega «${def.name}».`);
       applyEffect(s, def.effect, a.params);
-      p.played.push(a.card);
+      // Las cartas de comer se gastan para siempre: salen de la partida en vez de ir al descarte.
+      if (def.effect.kind === 'eat') p.removed.push(a.card);
+      else p.played.push(a.card);
       return;
     }
     case 'robar': {

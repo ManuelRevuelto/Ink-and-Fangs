@@ -66,7 +66,7 @@ export function renderOctopusPanel(v: PlayerView, spec: AskSpec | null): string 
     <div class="row">Comida: ${foods.join('')}</div>
     <h3>Mano (${P.hand.length})</h3>
     <div class="cards">${P.hand.map((c) => octoCardHtml(c, spec, null)).join('') || '<i>vacía</i>'}</div>
-    <div class="row small">Mazo: ${P.deck.length} · Descarte: ${P.discard.length}${P.played.length ? ` · Jugadas: ${P.played.length}` : ''}</div>
+    <div class="row small">Mazo: ${P.deck.length} · Descarte: ${P.discard.length}${P.played.length ? ` · Jugadas: ${P.played.length}` : ''}${P.removed.length ? ` · Fuera de la partida: ${P.removed.length}` : ''}</div>
     <h3>Aprender</h3>
     <div class="piles">${piles.join('')}</div>
     <div class="row">Bloques: ${supply.join(' ') || '<i>ninguno</i>'}</div>
