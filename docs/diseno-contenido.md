@@ -1,5 +1,9 @@
 # Diseño del contenido — BORRADOR v0.1 (para revisar)
 
+> ⚠️ **Pendiente:** Manuel va a retocar las cartas. La **fuente de verdad** son los ficheros de
+> `src/data/` (`octopusCards.ts`, `sharkCards.ts`, `growthTiles.ts`, `confrontation.ts`): si este
+> documento y el código no coinciden, manda el código. Guía para modificarlas: `docs/ESTADO.md`.
+
 Todo lo de este documento es propuesta. Cambia nombres, costes o efectos a tu gusto: el código
 leerá estos datos desde `src/data/`, así que equilibrar el juego después será solo editar números.
 
