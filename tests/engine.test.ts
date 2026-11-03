@@ -6,6 +6,13 @@ import { countDice, playRandomGame, TOTAL } from './simulation';
 
 const die = (id: number, color: 'azul' | 'amarillo' | 'rojo', value: number) => ({ id, color, value });
 
+/** Una casilla interior y el cruce al que mira, desde el que salen 2 caminos. */
+function interiorStart() {
+  const edge = BOARD.currents.find((c) => c.zones.length === 2)!;
+  const via = edge.vertices.find((v) => BOARD.vertices[v].edges.length >= 3)!;
+  return { edge: edge.id, via };
+}
+
 /** Pone el estado en la fase de movimiento del tiburón con la configuración indicada. */
 function sharkAt(s: GameState, current: number, facing: number) {
   s.active = 'tiburon';
@@ -88,25 +95,26 @@ describe('pulpo', () => {
 });
 
 describe('movimiento del tiburón', () => {
-  // Casilla 0 = borde superior de la zona 0, entre los cruces 0 y 1. Mirando al cruce 1.
   it('sin corrientes, avanza a una casilla contigua sin dar la vuelta', () => {
     const s = newGame({ seed: 1 });
-    sharkAt(s, 0, 1);
+    const { edge, via } = interiorStart();
+    sharkAt(s, edge, via);
     const paths = legalPaths(s);
     expect(paths.every((p) => p.length === 1)).toBe(true);
-    expect(paths.map((p) => p[0]).sort()).toEqual(BOARD.vertices[1].edges.filter((e) => e !== 0).sort());
+    expect(paths.map((p) => p[0]).sort()).toEqual(BOARD.vertices[via].edges.filter((e) => e !== edge).sort());
   });
 
   it('nada por una cadena de corrientes descendente y no puede subir', () => {
     const s = newGame({ seed: 1 });
-    sharkAt(s, 0, 1);
-    const [a] = BOARD.vertices[1].edges.filter((e) => e !== 0 && BOARD.currents[e].orientation === 'h'); // casilla 1
+    const { edge, via } = interiorStart();
+    sharkAt(s, edge, via);
+    const [a] = BOARD.vertices[via].edges.filter((e) => e !== edge);
     s.currents[a] = die(100, 'azul', 5);
     let paths = legalPaths(s);
     expect(paths.some((p) => p.length === 1 && p[0] === a)).toBe(false); // no puede parar en la corriente
     expect(paths.some((p) => p[0] === a && p.length === 2)).toBe(true);
     // Siguiente corriente mayor: esa rama se corta
-    const far = BOARD.currents[a].vertices.find((v) => v !== 1)!;
+    const far = BOARD.currents[a].vertices.find((v) => v !== via)!;
     const nexts = BOARD.vertices[far].edges.filter((e) => e !== a);
     nexts.forEach((e) => (s.currents[e] = die(200 + e, 'azul', 6)));
     paths = legalPaths(s);
@@ -119,11 +127,13 @@ describe('movimiento del tiburón', () => {
 
   it('al moverse por corrientes, el primer dado va al crecimiento', () => {
     let s = newGame({ seed: 1 });
-    sharkAt(s, 0, 1);
-    s.currents[1] = die(100, 'azul', 4);
-    const path = legalPaths(s).find((p) => p[0] === 1)!;
+    const { edge, via } = interiorStart();
+    sharkAt(s, edge, via);
+    const [a] = BOARD.vertices[via].edges.filter((e) => e !== edge);
+    s.currents[a] = die(100, 'azul', 4);
+    const path = legalPaths(s).find((p) => p[0] === a)!;
     s = applyAction(s, 'tiburon', { type: 'mover', path });
-    expect(s.currents[1]).toBeNull();
+    expect(s.currents[a]).toBeNull();
     expect(s.tiburon.growthQueue.map((d) => d.id)).toEqual([100]);
     expect(s.phase).toBe('tiburon-buscar');
   });
@@ -132,7 +142,8 @@ describe('movimiento del tiburón', () => {
 describe('búsqueda, ataque y enfrentamiento', () => {
   function readyToSearch(seed: number) {
     const s = newGame({ seed });
-    sharkAt(s, 0, 1); // casilla 0 toca solo la zona 0 (roca, 5+)
+    const lair = LAIRS.find((l) => BOARD.currents[l].zones[0] === 0)!; // toca solo la zona 0 (roca, 5+)
+    sharkAt(s, lair, BOARD.currents[lair].vertices[0]);
     s.phase = 'tiburon-buscar';
     return s;
   }

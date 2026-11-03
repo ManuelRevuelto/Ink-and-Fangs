@@ -4,8 +4,8 @@ Registro de lo que hemos decidido cuando las reglas dejaban dudas. El motor impl
 
 ## Tablero
 - Tablero **redondo** dividido en 3×3 zonas: roca (5+) en las «esquinas», algas (4+) en los lados, expuesta (2+) en el centro.
-- 24 casillas de corriente en los bordes de las zonas; el tiburón cambia de casilla atravesando cruces.
-- **4 guaridas**, una por cada zona de roca, en uno de sus dos bordes exteriores (en simetría de giro). El otro borde exterior es una casilla normal por la que pasa el tiburón.
+- 20 casillas de corriente en los bordes de las zonas; el tiburón cambia de casilla atravesando cruces.
+- **4 guaridas**: el borde exterior de cada zona de roca es un único arco que es su guarida (no hay más casillas exteriores en las rocas). La guarida une los dos caminos laterales, así que el tiburón que sale de ella elige hacia qué lado va.
 
 ## Pulpo
 - **Barajar:** los bloques se recolocan **al azar** en los huecos vacíos (el tiburón no elige).

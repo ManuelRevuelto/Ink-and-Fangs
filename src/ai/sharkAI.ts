@@ -173,7 +173,7 @@ function rerollChoice(v: PlayerView): Action | null {
 function planCurrents(v: PlayerView, P: number[]): { die: number; current: number }[] {
   const T = v.tiburon;
   const blue = T.pool.filter((d) => d.color === 'azul');
-  const free = range(24).filter((c) => !v.currents[c] && c !== T.current);
+  const free = range(BOARD.currents.length).filter((c) => !v.currents[c] && c !== T.current);
   const placements: { die: number; current: number }[] = [];
   let view = withView(v, (c) => (c.phase = 'tiburon-mover'));
   let bestScore = bestPath(view, P).score;

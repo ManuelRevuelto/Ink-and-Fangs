@@ -29,7 +29,7 @@ export function randomCandidates(v: PlayerView, r: Rand, tries = 40): Action[] {
   const zones = range(9);
   const hidden = zones.filter((z) => v.spaces[z].block && !v.spaces[z].revealed);
   const revealed = zones.filter((z) => v.spaces[z].block && v.spaces[z].revealed);
-  const withCurrent = range(24).filter((c) => v.currents[c]);
+  const withCurrent = range(BOARD.currents.length).filter((c) => v.currents[c]);
 
   // ---- Decisiones pendientes ----
   const p = v.pending;
@@ -103,7 +103,7 @@ export function randomCandidates(v: PlayerView, r: Rand, tries = 40): Action[] {
       break;
     case 'tiburon-tirado': {
       const blue = T.pool.filter((d) => d.color === 'azul');
-      const free = range(24).filter((c) => !v.currents[c] && c !== T.current);
+      const free = range(BOARD.currents.length).filter((c) => !v.currents[c] && c !== T.current);
       for (let i = 0; i < 5; i++) {
         const dice = sample(r, blue, Math.floor(r() * (blue.length + 1)));
         const spots = sample(r, free, dice.length);

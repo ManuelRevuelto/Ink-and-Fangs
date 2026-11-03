@@ -1,4 +1,4 @@
-import { BOARD, LAIRS, vertexTowardCenter } from '../data/board';
+import { BOARD, LAIRS } from '../data/board';
 import { CONF_COLORS } from '../data/confrontation';
 import { expandOctoCards, type FoodId, type OctoPile } from '../data/octopusCards';
 import { INITIAL_BAG, MARKET_SIZE, SHARK_CARDS, TOTAL_DICE } from '../data/sharkCards';
@@ -111,7 +111,7 @@ export function newGame(opts: NewGameOptions = {}): GameState {
   const lair = opts.sharkLair ?? LAIRS[nextInt(s, LAIRS.length)];
   if (!LAIRS.includes(lair)) throw new Error(`La casilla ${lair} no es una guarida`);
   s.tiburon.current = lair;
-  s.tiburon.facing = vertexTowardCenter(lair);
+  s.tiburon.facing = null; // la guarida une dos caminos: el tiburón elige hacia dónde sale
 
   log(s, 'Comienza la partida. Juega el pulpo.');
   return s;

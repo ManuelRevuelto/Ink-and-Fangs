@@ -335,7 +335,7 @@ async function sharkFlow(v: PlayerView): Promise<Action> {
         ],
       });
       if (p.kind === 'die') {
-        const free = range(24).filter((c) => !v.currents[c] && c !== T.current && !tentCurrents.some((t) => t.current === c));
+        const free = range(BOARD.currents.length).filter((c) => !v.currents[c] && c !== T.current && !tentCurrents.some((t) => t.current === c));
         const c = await ask({ prompt: '¿En qué casilla pones la corriente?', currents: free, selectedDice: [p.id], tentativeCurrents: tentCurrents, buttons: [CANCEL] });
         if (c.kind === 'current') tentCurrents.push({ current: c.id, die: p.id });
         return sharkFlow(v);
@@ -526,7 +526,7 @@ async function sharkCardFlow(v: PlayerView, card: string): Promise<Action> {
 // =====================================================================
 
 async function pendingFlow(v: PlayerView, p: Pending): Promise<Action> {
-  const withCurrent = range(24).filter((c) => v.currents[c]);
+  const withCurrent = range(BOARD.currents.length).filter((c) => v.currents[c]);
   const pickCurrents = async (max: number, prompt: string) => {
     const out: number[] = [];
     while (out.length < max) {

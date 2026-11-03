@@ -2,14 +2,17 @@
  * Tablero: bosque de algas REDONDO dividido en 3×3 zonas.
  * (Topológicamente es una cuadrícula; el borde exterior se dibuja como un círculo.)
  *
- *   +--G--+--□--+--□--+      Zonas (fila, columna):
- *   □  5  □  4  □  5  G        roca (5) en las «esquinas»
- *   +--□--+--□--+--□--+        algas (4) en los lados
- *   □  4  □  2  □  4  □        expuesta (2) en el centro
- *   +--□--+--□--+--□--+
- *   G  5  □  4  □  5  □      □ = casilla de corriente (borde de zona)
- *   +--□--+--□--+--G--+      G = guarida (1 por cada zona de roca, en simetría de giro)
- *                            + = cruce (vértice) donde el tiburón elige dirección
+ *      ╭──G──+──□──+──G──╮      Zonas (fila, columna):
+ *      │  5  □  4  □  5  │        roca (5) en las «esquinas»
+ *      +──□──+──□──+──□──+        algas (4) en los lados
+ *      □  4  □  2  □  4  □        expuesta (2) en el centro
+ *      +──□──+──□──+──□──+
+ *      │  5  □  4  □  5  │      □ = casilla de corriente (borde de zona)
+ *      ╰──G──+──□──+──G──╯      G = guarida: el borde exterior de cada roca es UN solo arco
+ *                               + = cruce (vértice) donde el tiburón elige dirección
+ *
+ * Las zonas de roca no tienen otras casillas exteriores: su guarida une los dos caminos
+ * laterales, así que el cruce de la esquina no existe (queda sin casillas).
  *
  * El tiburón ocupa una casilla de corriente y mira hacia uno de sus dos cruces.
  * Al moverse atraviesa ese cruce y entra en otra casilla que salga de él.
@@ -37,7 +40,7 @@ export interface Vertex {
 
 export interface CurrentSpace {
   id: number;
-  orientation: 'h' | 'v';
+  orientation: 'h' | 'v' | 'arco'; // 'arco' = guarida exterior de una roca
   vertices: [number, number]; // los dos cruces en sus extremos
   zones: number[]; // 1 o 2 zonas adyacentes (donde se puede buscar/atacar)
   isLair: boolean; // guarida del tiburón
@@ -57,18 +60,7 @@ const zoneId = (r: number, c: number) => r * GRID + c;
 const vertexId = (r: number, c: number) => r * (GRID + 1) + c;
 const inGrid = (r: number, c: number) => r >= 0 && r < GRID && c >= 0 && c < GRID;
 
-/**
- * Cada zona de roca tiene UNA guarida en uno de sus dos bordes exteriores; el otro es una casilla
- * normal por la que pasa el tiburón. Se eligen en simetría de giro (como las aspas de un molino).
- */
-const LAIR_ORIENTATION: Record<string, 'h' | 'v'> = {
-  '0,0': 'h', // arriba-izquierda: borde superior
-  [`0,${GRID - 1}`]: 'v', // arriba-derecha: borde derecho
-  [`${GRID - 1},${GRID - 1}`]: 'h', // abajo-derecha: borde inferior
-  [`${GRID - 1},0`]: 'v', // abajo-izquierda: borde izquierdo
-};
-const isLairEdge = (zone: number, orientation: 'h' | 'v') =>
-  LAIR_ORIENTATION[`${Math.floor(zone / GRID)},${zone % GRID}`] === orientation;
+const isCornerZone = (z: number) => zoneKind(Math.floor(z / GRID), z % GRID) === 'roca';
 
 function buildBoard() {
   const zones: Zone[] = [];
@@ -93,10 +85,11 @@ function buildBoard() {
   }
 
   const currents: CurrentSpace[] = [];
-  const addCurrent = (orientation: 'h' | 'v', v: [number, number], zs: number[]) => {
-    const isOuter = zs.length === 1;
+  const addCurrent = (orientation: CurrentSpace['orientation'], v: [number, number], zs: number[]) => {
+    // Los bordes exteriores de las rocas se sustituyen por su guarida (ver más abajo).
+    if (orientation !== 'arco' && zs.length === 1 && isCornerZone(zs[0])) return;
     const id = currents.length;
-    currents.push({ id, orientation, vertices: v, zones: zs, isLair: isOuter && isLairEdge(zs[0], orientation) });
+    currents.push({ id, orientation, vertices: v, zones: zs, isLair: orientation === 'arco' });
     vertices[v[0]].edges.push(id);
     vertices[v[1]].edges.push(id);
   };
@@ -124,6 +117,15 @@ function buildBoard() {
         .map(([rr, c]) => zoneId(rr, c));
       addCurrent('v', [vertexId(r, j), vertexId(r + 1, j)], zs);
     }
+  }
+
+  // Guaridas: un arco por cada roca que une los dos cruces exteriores no esquineros.
+  for (const z of zones.filter((zz) => zz.kind === 'roca')) {
+    const cr = z.row === 0 ? 0 : GRID; // fila del cruce de la esquina
+    const cc = z.col === 0 ? 0 : GRID;
+    const alongRow = vertexId(cr, cc === 0 ? 1 : GRID - 1);
+    const alongCol = vertexId(cr === 0 ? 1 : GRID - 1, cc);
+    addCurrent('arco', [alongRow, alongCol], [z.id]);
   }
 
   return { zones, vertices, currents };

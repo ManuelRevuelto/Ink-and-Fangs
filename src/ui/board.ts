@@ -98,7 +98,8 @@ export function currentCenter(id: number): [number, number] {
 function zoneVertices(zone: number): number[] {
   const { row, col } = BOARD.zones[zone];
   const v = (r: number, c: number) => r * (GRID + 1) + c;
-  return [v(row, col), v(row, col + 1), v(row + 1, col + 1), v(row + 1, col)];
+  // El cruce de la esquina de las rocas no existe (su borde exterior es un solo arco-guarida).
+  return [v(row, col), v(row, col + 1), v(row + 1, col + 1), v(row + 1, col)].filter((id) => BOARD.vertices[id].edges.length > 0);
 }
 
 const edgeBetween = (a: number, b: number) =>
@@ -324,7 +325,8 @@ export function drawBoard(ctx: CanvasRenderingContext2D, v: PlayerView, spec: As
     // Valor de visibilidad de la zona: en la esquina del bloque que mira hacia fuera del tablero
     const [ox, oy] = BLOCK_CENTER[z.id];
     const sx = Math.abs(ox - CX) < 1 ? 0 : Math.sign(ox - CX);
-    const sy = Math.abs(oy - CY) < 1 ? 0 : Math.sign(oy - CY);
+    // En las rocas va al lateral, para no tapar la guarida de la diagonal.
+    const sy = Math.abs(oy - CY) < 1 || z.kind === 'roca' ? 0 : Math.sign(oy - CY);
     const badgeX = sx === 0 && sy === 0 ? bx - 4 : sx < 0 ? bx - 4 : sx > 0 ? bx + BLOCK_W + 4 : bx + BLOCK_W / 2;
     const badgeY = sx === 0 && sy === 0 ? by - 4 : sy < 0 ? by - 4 : sy > 0 ? by + BLOCK_H + 4 : by + BLOCK_H / 2;
     ctx.beginPath();
