@@ -123,7 +123,7 @@ export async function showMenu() {
   gameToken++;
   state = null;
   const el = overlay(`
-    <h1>Colmillos y Dientes</h1>
+    <h1>Ink and Fangs</h1>
     <p>El pulpo se esconde. El tiburón caza.</p>
     <div class="menu">
       <button class="primary" data-value="local">👥 2 jugadores (mismo ordenador)</button>

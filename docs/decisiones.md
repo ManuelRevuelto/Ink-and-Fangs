@@ -1,11 +1,11 @@
-# Decisiones de reglas (aclaraciones sobre `reglas-original.md`)
+# Decisiones de reglas de Ink and Fangs (aclaraciones sobre `reglas-original.md`)
 
 Registro de lo que hemos decidido cuando las reglas dejaban dudas. El motor implementa esto.
 
 ## Tablero
-- 3×3 zonas: roca (5+) en esquinas, algas (4+) en lados, expuesta (2+) en el centro.
+- Tablero **redondo** dividido en 3×3 zonas: roca (5+) en las «esquinas», algas (4+) en los lados, expuesta (2+) en el centro.
 - 24 casillas de corriente en los bordes de las zonas; el tiburón cambia de casilla atravesando cruces.
-- Guaridas: las 8 casillas exteriores de las zonas de roca.
+- **4 guaridas**, una por cada zona de roca, en uno de sus dos bordes exteriores (en simetría de giro). El otro borde exterior es una casilla normal por la que pasa el tiburón.
 
 ## Pulpo
 - **Barajar:** los bloques se recolocan **al azar** en los huecos vacíos (el tiburón no elige).

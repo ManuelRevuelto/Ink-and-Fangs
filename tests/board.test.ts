@@ -12,8 +12,9 @@ describe('tablero', () => {
     expect(BOARD.vertices).toHaveLength(16);
   });
 
-  it('tiene 8 guaridas, todas junto a una zona de roca', () => {
-    expect(LAIRS).toHaveLength(8);
+  it('tiene 4 guaridas, una en cada zona de roca', () => {
+    expect(LAIRS).toHaveLength(4);
+    expect(new Set(LAIRS.map((id) => BOARD.currents[id].zones[0])).size).toBe(4);
     for (const id of LAIRS) {
       const c = BOARD.currents[id];
       expect(c.zones).toHaveLength(1);
