@@ -6,13 +6,26 @@ import { HIDDEN, type PlayerView } from '../engine/view';
 import { octopusBelief } from './belief';
 
 /**
- * IA del pulpo (nivel «Normal»).
+ * IA del pulpo (los niveles de dificultad solo cambian sus parámetros: ver difficulty.ts).
  * Calcula lo mismo que deduce el tiburón (la deducción solo usa información pública) y juega para
  * mantener esa certeza baja, comer cuando puede y frenar al tiburón con trampas.
  * Devuelve una lista de acciones ordenadas de mejor a peor: se usa la primera que sea legal.
  */
 
 type Scored = { score: number; action: Action };
+
+/** Parámetros de decisión del pulpo (los niveles de dificultad cambian estos números). */
+export interface OctoParams {
+  payInfo: number; // cuánto le importa dar pistas al pagar
+  eat: number; // ganas de comer
+  shuffle: number; // ganas de barajar cuando hay peligro
+  hidePulpo: number; // ganas de ocultarse si está a la vista
+  learn: number; // multiplicador de aprender
+}
+
+export const OCTO_NORMAL: OctoParams = { payInfo: 12, eat: 60, shuffle: 60, hidePulpo: 45, learn: 1.4 };
+
+let K: OctoParams = OCTO_NORMAL;
 
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 const ZONES = range(9);
@@ -121,7 +134,7 @@ function choosePayment(c: Ctx, cost: number, exclude: number[]): { zones: number
   }
   if (paid < cost) return null;
   // Coste de información: revelar algo que el tiburón no tenía descartado le ayuda.
-  const info = zones.reduce((n, z) => n + 0.4 + 12 * c.P[z], 0);
+  const info = zones.reduce((n, z) => n + 0.4 + K.payInfo * c.P[z], 0);
   return { zones, info };
 }
 
@@ -186,7 +199,7 @@ function hideTargets(c: Ctx, exclude: number[] = []): number[] {
 }
 
 const hideValue = (c: Ctx, zones: number[]) =>
-  zones.reduce((n, z) => n + (z === c.pz ? 45 : c.block(z)?.kind === 'trampa' ? 4 : 1.2), 0);
+  zones.reduce((n, z) => n + (z === c.pz ? K.hidePulpo : c.block(z)?.kind === 'trampa' ? 4 : 1.2), 0);
 
 /** Intercambio que deja al pulpo junto a una comida que está en el tablero. */
 function swapTowardFood(c: Ctx, anyDistance: boolean, hiddenOnly: boolean): [number, number] | null {
@@ -216,7 +229,7 @@ function cardCandidates(c: Ctx, card: string): Scored[] {
   switch (e.kind) {
     case 'eat': {
       const fz = ZONES.find((z) => c.block(z)?.kind === 'comida' && c.block(z)?.food === e.food);
-      if (fz !== undefined && adjacent(fz, c.pz)) play(c.v.pulpo.foodTrack.length === 3 ? 1000 : 60 - c.danger * 10, []);
+      if (fz !== undefined && adjacent(fz, c.pz)) play(c.v.pulpo.foodTrack.length === 3 ? 1000 : K.eat - c.danger * 10, []);
       break;
     }
     case 'shuffle': {
@@ -228,7 +241,7 @@ function cardCandidates(c: Ctx, card: string): Scored[] {
       if (zones.length !== e.n || (e.includeExposed && !c.v.spaces[EXPOSED].block)) break;
       const newP = zones.reduce((n, z) => n + c.P[z], 0) / zones.length;
       const gain = Math.max(0, c.P[c.pz] - newP);
-      play(gain * 60 * Math.min(1, c.danger * 2 + 0.2), zones, { zones });
+      play(gain * K.shuffle * Math.min(1, c.danger * 2 + 0.2), zones, { zones });
       break;
     }
     case 'swap': {
@@ -253,7 +266,7 @@ function cardCandidates(c: Ctx, card: string): Scored[] {
       if (!pay) break;
       const after: Ctx = { ...c, revealed: (z) => c.revealed(z) || pay.zones.includes(z) };
       const plan = planLearn(after, e.n, !!e.toHand);
-      if (plan) out.push({ score: plan.value * 1.4 - pay.info, action: { type: 'jugar', card, pay: pay.zones, params: { picks: plan.picks } } });
+      if (plan) out.push({ score: plan.value * K.learn - pay.info, action: { type: 'jugar', card, pay: pay.zones, params: { picks: plan.picks } } });
       break;
     }
   }
@@ -282,7 +295,8 @@ function foodCandidates(c: Ctx): Scored[] {
     });
 }
 
-export function octopusDecide(v: PlayerView): Action[] {
+export function octopusDecide(v: PlayerView, params: OctoParams = OCTO_NORMAL): Action[] {
+  K = params;
   const c = context(v);
   if (v.pending) return pendingDecision(c);
 

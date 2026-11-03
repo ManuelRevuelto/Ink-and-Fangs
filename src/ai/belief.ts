@@ -11,11 +11,13 @@ import { HIDDEN, type PlayerView } from '../engine/view';
  * - Barajar → la probabilidad total de esas zonas se reparte por igual entre ellas.
  * - Bloque nuevo o concha tras comer → esa zona pasa a 0 (nunca es el pulpo).
  */
-export function octopusBelief(v: PlayerView): number[] {
+export function octopusBelief(v: PlayerView, memory = Infinity): number[] {
   let w = Array(9).fill(1);
   const onlyAt = (z: number) => (w = w.map((_, i) => (i === z ? 1 : 0)));
 
-  for (const ev of v.events) {
+  // Con memoria limitada (nivel Fácil) solo se recuerdan los últimos eventos.
+  const events = Number.isFinite(memory) ? v.events.slice(-memory) : v.events;
+  for (const ev of events) {
     switch (ev.k) {
       case 'reveal':
         if (ev.octo !== undefined) onlyAt(ev.octo);

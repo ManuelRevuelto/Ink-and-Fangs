@@ -77,3 +77,20 @@ describe('IAs del tiburón y del pulpo', () => {
     expect(vsSmart).toBeLessThan(vsDumb - N * 0.15);
   }, 300_000);
 });
+
+describe('niveles de dificultad', () => {
+  it('el tiburón gana más cuanto más difícil es (contra el pulpo Normal)', async () => {
+    const { brainsFor } = await import('../src/ai/difficulty');
+    const N = 100;
+    const rate = (level: 'facil' | 'normal' | 'dificil') => {
+      const brains = { tiburon: brainsFor(level).tiburon, pulpo: brainsFor('normal').pulpo };
+      let w = 0;
+      for (let seed = 500; seed < 500 + N; seed++) if (playAI(seed, brains).winner === 'tiburon') w++;
+      return w;
+    };
+    const [f, n, d] = [rate('facil'), rate('normal'), rate('dificil')];
+    console.log(`Tiburón vs pulpo Normal — Fácil ${f}/${N} · Normal ${n}/${N} · Difícil ${d}/${N}`);
+    expect(f).toBeLessThan(n);
+    expect(d).toBeGreaterThan(n);
+  }, 600_000);
+});

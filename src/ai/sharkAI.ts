@@ -7,12 +7,39 @@ import { HIDDEN, type PlayerView } from '../engine/view';
 import { octopusBelief } from './belief';
 
 /**
- * IA del tiburón (nivel «Normal»).
+ * IA del tiburón (los niveles de dificultad solo cambian sus parámetros: ver difficulty.ts).
  * Solo usa su vista: deduce dónde está el pulpo (belief.ts) y elige la posición desde la que
  * mejor puede buscar o atacar, cuidando el hambre.
  */
 
 type Strike = { die: number; zone: number };
+
+/** Parámetros de decisión del tiburón (los niveles de dificultad cambian estos números). */
+export interface SharkParams {
+  winScale: number; // valor de dar con el pulpo (× prob. de ganar el enfrentamiento)
+  winBase: number; // valor de dar con el pulpo aunque escape (le quita una carta)
+  hungerBase: number; // coste de 1 de hambre…
+  hungerSlope: number; // …que crece con el hambre acumulada
+  searchBase: number; // valor de buscar (crecer)…
+  searchP: number; // …más lo que se aprende según la probabilidad
+  nearWeight: number; // atracción hacia las zonas sospechosas
+  currentMargin: number; // mejora mínima para colocar una corriente
+  memory: number; // cuántos eventos recuerda (Infinity = todos)
+}
+
+export const SHARK_NORMAL: SharkParams = {
+  winScale: 12,
+  winBase: 4,
+  hungerBase: 1.5,
+  hungerSlope: 1.2,
+  searchBase: 1,
+  searchP: 4,
+  nearWeight: 2,
+  currentMargin: 0.3,
+  memory: Infinity,
+};
+
+let K: SharkParams = SHARK_NORMAL;
 
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 
@@ -30,7 +57,7 @@ function winChance(v: PlayerView) {
 function hungerCost(v: PlayerView, extra = 0) {
   const h = v.tiburon.hunger.length + extra;
   if (h >= HUNGER_LIMIT - 1) return 1000; // el siguiente dado nos agota
-  return 1.5 + h * 1.2;
+  return K.hungerBase + h * K.hungerSlope;
 }
 
 function isOctopusRevealed(v: PlayerView, z: number) {
@@ -48,12 +75,12 @@ function planStrikes(v: PlayerView, P: number[], edge: number, dice: Die[]): { v
     const sp = v.spaces[z];
     if (!sp.block || d.value < BOARD.zones[z].value) return null;
     const octoVisible = isOctopusRevealed(v, z);
-    if (d.color === 'amarillo') return sp.revealed ? null : 1 + 4 * P[z];
+    if (d.color === 'amarillo') return sp.revealed ? null : K.searchBase + K.searchP * P[z];
     if (sp.revealed && !octoVisible) return null;
     const p = octoVisible ? 1 : P[z];
     const autoWin = v.pulpo.confrontation.length <= 1;
     if (v.tiburon.hunger.length >= HUNGER_LIMIT - 1 && !(p === 1 && autoWin)) return null;
-    const value = p * (12 * winChance(v) + 4) - hungerCost(v);
+    const value = p * (K.winScale * winChance(v) + K.winBase) - hungerCost(v);
     return value > 0 ? value : null;
   };
 
@@ -83,7 +110,7 @@ function planStrikes(v: PlayerView, P: number[], edge: number, dice: Die[]): { v
 function positionScore(v: PlayerView, P: number[], edge: number, dice: Die[]) {
   const zones = BOARD.currents[edge].zones;
   const near = zones.reduce((n, z) => n + P[z], 0);
-  return planStrikes(v, P, edge, dice).value + 2 * near;
+  return planStrikes(v, P, edge, dice).value + K.nearWeight * near;
 }
 
 function bestPath(v: PlayerView, P: number[]): { path: number[]; score: number } {
@@ -107,9 +134,10 @@ function withView(v: PlayerView, mutate: (c: PlayerView) => void): PlayerView {
 
 // ---------------- Decisión principal ----------------
 
-export function sharkDecide(v: PlayerView): Action {
+export function sharkDecide(v: PlayerView, params: SharkParams = SHARK_NORMAL): Action {
+  K = params;
   const T = v.tiburon;
-  const P = octopusBelief(v);
+  const P = octopusBelief(v, K.memory);
 
   if (v.pending) {
     if (v.pending.type === 'observador') return { type: 'observador', use: true };
@@ -193,7 +221,7 @@ function planCurrents(v: PlayerView, P: number[]): { die: number; current: numbe
     // Por eso se colocan corrientes salvo que la energía tenga hueco de sobra.
     const unusedAfter = T.energy.length + T.pool.length - placements.length - 1;
     const energyPressure = unusedAfter >= ENERGY_SLOTS - 1;
-    if (choice && (choice.score > bestScore + 0.3 || energyPressure || choice.score >= bestScore - 0.5)) {
+    if (choice && (choice.score > bestScore + K.currentMargin || energyPressure || choice.score >= bestScore - 0.5)) {
       placements.push({ die: d.id, current: choice.current });
       bestScore = choice.score;
       view = choice.view;

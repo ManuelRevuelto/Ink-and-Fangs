@@ -1,12 +1,13 @@
 import { it } from 'vitest';
 import { aiAct, aiErrors, BRAINS, type Brain } from '../src/ai';
+import { brainsFor, DIFFICULTY_NAMES, type Difficulty } from '../src/ai/difficulty';
 import { actors, newGame, type GameState, type Role } from '../src/engine';
 import { mulberry } from '../tests/simulation';
 
 /**
  * TORNEO IA contra IA: mide el equilibrio del juego.
  * Úsalo después de cambiar cartas o reglas:   npm run torneo
- * (Para más partidas: PARTIDAS=1000 npm run torneo)
+ * (Para más partidas: PARTIDAS=1000 npm run torneo · con niveles de dificultad: NIVELES=1 npm run torneo)
  */
 const N = Number(process.env.PARTIDAS ?? 300);
 
@@ -51,4 +52,10 @@ it('torneo', () => {
   report('IA contra IA', BRAINS);
   report('Pulpo IA contra tiburón al azar', { pulpo: BRAINS.pulpo, tiburon: null });
   report('Tiburón IA contra pulpo al azar', { pulpo: null, tiburon: BRAINS.tiburon });
+  if (process.env.NIVELES) {
+    for (const level of ['facil', 'dificil'] as Difficulty[]) {
+      report(`Tiburón ${DIFFICULTY_NAMES[level]} contra pulpo Normal`, { tiburon: brainsFor(level).tiburon, pulpo: BRAINS.pulpo });
+      report(`Pulpo ${DIFFICULTY_NAMES[level]} contra tiburón Normal`, { pulpo: brainsFor(level).pulpo, tiburon: BRAINS.tiburon });
+    }
+  }
 });

@@ -1,4 +1,5 @@
 import { aiAct } from '../ai';
+import { brainsFor, DIFFICULTY_NAMES, type Difficulty } from '../ai/difficulty';
 import { LAIRS } from '../data/board';
 import { actors, newGame, tryAction, viewFor, type GameState, type Role } from '../engine';
 import { ask, Cancel, currentSpec, offer, onAskChange } from './ask';
@@ -8,7 +9,7 @@ import { nextAction, resetTentative, UiError } from './flows';
 import { pickFromEvent, renderLog, renderOctopusPanel, renderPromptBar, renderSharkPanel } from './panels';
 import type { Pick } from './ask';
 
-type Mode = { kind: 'local' } | { kind: 'ai'; human: Role };
+type Mode = { kind: 'local' } | { kind: 'ai'; human: Role; level: Difficulty };
 
 const ROLE_NAME: Record<Role, string> = { pulpo: '🐙 Pulpo', tiburon: '🦈 Tiburón' };
 const AI_DELAY_MS = 450;
@@ -54,7 +55,8 @@ function render() {
   $('prompt-bar').innerHTML =
     renderPromptBar(spec, error, waiting) + (animating ? '<button id="skip-anim">⏩ Saltar animación</button>' : '');
   $('log').innerHTML = renderLog(v);
-  $('viewer').textContent = `Estás viendo como: ${ROLE_NAME[viewer]}`;
+  const levelText = mode.kind === 'ai' ? ` · Máquina: ${DIFFICULTY_NAMES[mode.level]}` : ' · 2 jugadores';
+  $('viewer').textContent = `Estás viendo como: ${ROLE_NAME[viewer]}${levelText}`;
 }
 
 // ---------------- Animaciones ----------------
@@ -133,7 +135,21 @@ export async function showMenu() {
     <p class="small">La máquina razona con los dos: el tiburón deduce dónde estás y el pulpo intenta despistarte.</p>`);
   const choice = await waitButton(el);
   hideOverlay();
-  mode = choice === 'local' ? { kind: 'local' } : { kind: 'ai', human: choice === 'ai-pulpo' ? 'pulpo' : 'tiburon' };
+  if (choice === 'local') mode = { kind: 'local' };
+  else {
+    const human: Role = choice === 'ai-pulpo' ? 'pulpo' : 'tiburon';
+    const rival = human === 'pulpo' ? '🦈 tiburón' : '🐙 pulpo';
+    const lv = overlay(`
+      <h1>¿Qué nivel tiene el ${rival}?</h1>
+      <div class="menu">
+        <button data-value="facil">🟢 Fácil — se equivoca a menudo</button>
+        <button class="primary" data-value="normal">🟡 Normal</button>
+        <button data-value="dificil">🔴 Difícil — afinado para ganar</button>
+      </div>`);
+    const level = (await waitButton(lv)) as Difficulty;
+    hideOverlay();
+    mode = { kind: 'ai', human, level };
+  }
   startGame();
 }
 
@@ -169,7 +185,7 @@ async function gameLoop(token: number) {
       render();
       await sleep(AI_DELAY_MS);
       if (token !== gameToken) return;
-      state = aiAct(state, role);
+      state = aiAct(state, role, Math.random, brainsFor(mode.kind === 'ai' ? mode.level : 'normal'));
       if (mode.kind === 'ai') await replayFor(mode.human, token);
       continue;
     }
