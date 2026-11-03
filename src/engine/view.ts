@@ -15,7 +15,8 @@ export function viewFor(state: GameState, me: Role): PlayerView {
   v.me = me;
   v.rng = 0;
   v.tiburon.deck = v.tiburon.deck.map(() => HIDDEN);
-  v.pulpo.deck = v.pulpo.deck.map(() => HIDDEN);
+  // El pulpo conoce qué cartas tiene en su mazo (pero no el orden): se las damos ordenadas.
+  v.pulpo.deck = me === 'pulpo' ? [...v.pulpo.deck].sort() : v.pulpo.deck.map(() => HIDDEN);
   // De los montones para aprender solo se ve la carta de arriba.
   for (const pile of Object.values(v.pulpo.piles)) pile.forEach((_, i) => i > 0 && (pile[i] = HIDDEN));
 

@@ -158,6 +158,9 @@ export function sharkAction(s: GameState, a: SharkAction) {
       processQueue(s);
       return;
     }
+    case 'renovar':
+      requirePhase(s, 'tiburon-energia');
+      return refreshMarket(s, a.die, a.slot);
     case 'energia':
       requirePhase(s, 'tiburon-energia');
       return spendEnergy(s, a);
@@ -468,24 +471,29 @@ function finishSearch(s: GameState) {
   s.phase = 'tiburon-energia';
 }
 
+function energyDieOf(s: GameState, id: number): Die {
+  const d = s.tiburon.energy.find((x) => x.id === id);
+  if (!d) fail('Ese dado no está en tu energía almacenada');
+  return d;
+}
+
+/** Una vez por turno: baja 1 un dado de energía para cambiar una carta del mercado. */
+function refreshMarket(s: GameState, dieId: number, slot: number) {
+  const t = s.tiburon;
+  if (t.marketRefreshed) fail('Solo puedes renovar el mercado una vez por turno');
+  const d = energyDieOf(s, dieId);
+  if (d.value <= 1) fail('Un dado no puede bajar de 1');
+  if (!t.market[slot]) fail('No hay carta en ese hueco');
+  if (t.deck.length === 0) fail('No quedan cartas en el mazo');
+  d.value--;
+  t.market[slot] = t.deck.shift()!;
+  t.marketRefreshed = true;
+  log(s, 'El tiburón renueva una carta del mercado.');
+}
+
 function spendEnergy(s: GameState, a: Extract<SharkAction, { type: 'energia' }>) {
   const t = s.tiburon;
-  const energyDie = (id: number) => {
-    const d = t.energy.find((x) => x.id === id);
-    if (!d) fail('Ese dado no está en tu energía almacenada');
-    return d;
-  };
-
-  if (a.refresh) {
-    if (t.marketRefreshed) fail('Solo puedes renovar el mercado una vez por turno');
-    const d = energyDie(a.refresh.die);
-    if (d.value <= 1) fail('Un dado no puede bajar de 1');
-    if (!t.market[a.refresh.slot]) fail('No hay carta en ese hueco');
-    d.value--;
-    t.market[a.refresh.slot] = t.deck.shift() ?? null;
-    t.marketRefreshed = true;
-    log(s, 'El tiburón renueva una carta del mercado.');
-  }
+  const energyDie = (id: number) => energyDieOf(s, id);
 
   assertDistinct(a.buy, 'cartas');
   const total = t.energy.reduce((n, d) => n + d.value, 0);

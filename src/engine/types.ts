@@ -143,7 +143,8 @@ export type SharkAction =
   | { type: 'corrientes'; placements: { die: number; current: number }[] }
   | { type: 'mover'; path: number[]; facing?: number }
   | { type: 'buscarAtacar'; placements: { die: number; zone: number }[] }
-  | { type: 'energia'; buy: number[]; refresh?: { die: number; slot: number }; hungerDie?: number };
+  | { type: 'renovar'; die: number; slot: number }
+  | { type: 'energia'; buy: number[]; hungerDie?: number };
 
 export type PendingAction =
   | { type: 'resolverTrampa'; zones?: number[]; currents?: number[]; lair?: number }
