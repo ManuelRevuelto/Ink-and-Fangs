@@ -92,7 +92,84 @@ export function drawDie(ctx: CanvasRenderingContext2D, d: Die, cx: number, cy: n
   ctx.fillText(String(d.value), cx, cy + 1);
 }
 
-export function drawBoard(ctx: CanvasRenderingContext2D, v: PlayerView, spec: AskSpec | null, hover: Pick | null) {
+/** Capa de efectos para animar lo que acaba de pasar (turno de la máquina o del rival). */
+export interface Fx {
+  zones?: number[];
+  currents?: number[];
+  color: string;
+  icon?: string;
+  link?: [number, number]; // flecha doble entre dos zonas (intercambio)
+  trail?: number[]; // casillas recorridas por el tiburón
+  shark?: { current: number; facing: number | null };
+  pulse: number; // 0..1 para el parpadeo
+}
+
+const zoneCenter = (zone: number): [number, number] => {
+  const [bx, by] = blockRect(zone);
+  return [bx + BLOCK_W / 2, by + BLOCK_H / 2];
+};
+
+function drawFx(ctx: CanvasRenderingContext2D, fx: Fx) {
+  const alpha = 0.55 + 0.45 * Math.sin(fx.pulse * Math.PI * 2);
+  ctx.save();
+  ctx.globalAlpha = Math.max(0.3, alpha);
+  ctx.strokeStyle = fx.color;
+  ctx.shadowColor = fx.color;
+  ctx.shadowBlur = 18;
+  for (const t of fx.trail ?? []) {
+    const [cx, cy] = currentCenter(t);
+    ctx.lineWidth = 4;
+    roundRect(ctx, cx - CUR / 2 - 6, cy - CUR / 2 - 6, CUR + 12, CUR + 12, 8);
+    ctx.stroke();
+  }
+  for (const z of fx.zones ?? []) {
+    const [bx, by] = blockRect(z);
+    ctx.lineWidth = 7;
+    roundRect(ctx, bx - 9, by - 9, BLOCK_W + 18, BLOCK_H + 18, 12);
+    ctx.stroke();
+  }
+  for (const c of fx.currents ?? []) {
+    const [cx, cy] = currentCenter(c);
+    ctx.lineWidth = 6;
+    roundRect(ctx, cx - CUR / 2 - 8, cy - CUR / 2 - 8, CUR + 16, CUR + 16, 8);
+    ctx.stroke();
+  }
+  if (fx.link) {
+    const [x1, y1] = zoneCenter(fx.link[0]);
+    const [x2, y2] = zoneCenter(fx.link[1]);
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    for (const [ax, ay, bx2, by2] of [[x1, y1, x2, y2], [x2, y2, x1, y1]]) {
+      const ang = Math.atan2(by2 - ay, bx2 - ax);
+      ctx.beginPath();
+      ctx.moveTo(bx2, by2);
+      ctx.lineTo(bx2 - 18 * Math.cos(ang - 0.45), by2 - 18 * Math.sin(ang - 0.45));
+      ctx.lineTo(bx2 - 18 * Math.cos(ang + 0.45), by2 - 18 * Math.sin(ang + 0.45));
+      ctx.closePath();
+      ctx.fillStyle = fx.color;
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+  if (fx.icon) {
+    ctx.font = '26px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const z of fx.zones ?? []) {
+      const [bx, by] = blockRect(z);
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.beginPath();
+      ctx.arc(bx + BLOCK_W + 4, by - 4, 18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillText(fx.icon, bx + BLOCK_W + 4, by - 3);
+    }
+  }
+}
+
+export function drawBoard(ctx: CanvasRenderingContext2D, v: PlayerView, spec: AskSpec | null, hover: Pick | null, fx: Fx | null = null) {
   ctx.clearRect(0, 0, SIZE, SIZE);
   ctx.fillStyle = '#0e3140';
   ctx.fillRect(0, 0, SIZE, SIZE);
@@ -208,11 +285,12 @@ export function drawBoard(ctx: CanvasRenderingContext2D, v: PlayerView, spec: As
     }
   }
 
-  drawShark(ctx, v);
+  if (fx) drawFx(ctx, fx);
+  drawShark(ctx, fx?.shark ?? v.tiburon);
 }
 
-function drawShark(ctx: CanvasRenderingContext2D, v: PlayerView) {
-  const { current, facing } = v.tiburon;
+function drawShark(ctx: CanvasRenderingContext2D, pos: { current: number; facing: number | null }) {
+  const { current, facing } = pos;
   const [cx, cy] = currentCenter(current);
   if (facing !== null) {
     const fv = BOARD.vertices[facing];

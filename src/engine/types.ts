@@ -88,6 +88,23 @@ export type Pending =
   | { type: 'enfrentamiento'; role: 'ambos'; die: Die; choices: Partial<Record<Role, ConfColor>> }
   | { type: 'huida'; role: 'pulpo'; color: 'amarillo' | 'rojo'; die: Die };
 
+/**
+ * Eventos visuales (públicos) para que la interfaz pueda animar lo que ha pasado.
+ * Nunca contienen información oculta: solo zonas/casillas, no qué bloque hay.
+ */
+export type GameEvent =
+  | { k: 'reveal'; zones: number[] }
+  | { k: 'hide'; zones: number[] }
+  | { k: 'swap'; a: number; b: number }
+  | { k: 'shuffle'; zones: number[] }
+  | { k: 'newBlock'; zone: number }
+  | { k: 'eat'; zone: number }
+  | { k: 'currents'; currents: number[] }
+  | { k: 'currentsRemoved'; currents: number[] }
+  | { k: 'move'; from: number; fromFacing: number | null; path: number[] }
+  | { k: 'teleport'; from: number; to: number }
+  | { k: 'search'; zone: number; mode: 'buscar' | 'atacar' };
+
 export interface GameState {
   rng: number;
   nextDieId: number;
@@ -105,6 +122,7 @@ export interface GameState {
   winner: Role | null;
   winReason: string | null;
   log: string[];
+  events: GameEvent[];
 }
 
 // ---------------- Acciones ----------------

@@ -6,6 +6,7 @@ import {
   assertDistinct,
   blockAt,
   drawFromBag,
+  emit,
   endGame,
   isHiddenAt,
   log,
@@ -110,6 +111,7 @@ export function sharkAction(s: GameState, a: SharkAction) {
         if (s.currents[current] || current === t.current) fail('Esa casilla de corriente no está libre');
       }
       for (const { die, current } of a.placements) s.currents[current] = takeFromPool(s, die);
+      emit(s, { k: 'currents', currents: a.placements.map((p) => p.current) });
       if (a.placements.length) log(s, `El tiburón coloca ${a.placements.length} corriente(s).`);
       s.phase = 'tiburon-mover';
       return;
@@ -124,6 +126,7 @@ export function sharkAction(s: GameState, a: SharkAction) {
       } else {
         if (!paths.some((p) => p.join(',') === key)) fail('Ese recorrido no es legal');
         const via = sharedVertex(t.current, a.path[0]);
+        emit(s, { k: 'move', from: t.current, fromFacing: t.facing, path: [...a.path] });
         const firstCurrent = a.path.find((e) => s.currents[e]);
         if (firstCurrent !== undefined) {
           t.growthQueue.push(s.currents[firstCurrent]!);
@@ -284,6 +287,7 @@ export function processQueue(s: GameState) {
       continue;
     }
     const wasHidden = !s.spaces[zone].revealed;
+    emit(s, { k: 'search', zone, mode });
     s.spaces[zone].revealed = true;
     const what = b.kind === 'trampa' ? `una trampa (${TRAP_NAMES[b.trap!]})` : b.kind === 'conchaDoble' ? 'una concha doble' : b.kind === 'comida' ? 'comida' : b.kind === 'pulpo' ? '¡EL PULPO!' : 'una concha';
     if (mode === 'buscar') {
@@ -332,6 +336,7 @@ function sendSharkToLair(s: GameState, lair: number | undefined) {
     toBag(s, s.currents[lair]!);
     s.currents[lair] = null;
   }
+  emit(s, { k: 'teleport', from: s.tiburon.current, to: lair });
   s.tiburon.current = lair;
   s.tiburon.facing = null; // colocado a 90°: puede elegir dirección
   log(s, 'El tiburón vuelve a una guarida.');
@@ -347,6 +352,7 @@ function removeCurrents(s: GameState, list: number[] | undefined, max: number) {
     s.currents[c] = null;
   }
   if (cs.length) log(s, `El pulpo retira ${cs.length} corriente(s).`);
+  emit(s, { k: 'currentsRemoved', currents: [...cs] });
 }
 
 function startConfrontation(s: GameState, die: Die) {

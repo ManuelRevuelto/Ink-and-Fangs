@@ -2,11 +2,18 @@ import { BOARD } from '../data/board';
 import { HUNGER_LIMIT } from '../data/sharkCards';
 import type { DieColor } from '../data/sharkCards';
 import { nextInt, rollD6 } from './rng';
-import type { Block, Die, GameState, Role } from './types';
+import type { Block, Die, GameEvent, GameState, Role } from './types';
 import { fail } from './types';
 
 export function log(s: GameState, msg: string) {
   s.log.push(msg);
+}
+
+/** Registra un evento visual (no se emite si la lista de zonas/casillas está vacía). */
+export function emit(s: GameState, ev: GameEvent) {
+  if ('zones' in ev && ev.zones.length === 0) return;
+  if ('currents' in ev && ev.currents.length === 0) return;
+  s.events.push(ev);
 }
 
 export function endGame(s: GameState, winner: Role, reason: string) {

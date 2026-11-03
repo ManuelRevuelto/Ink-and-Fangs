@@ -4,6 +4,7 @@ import {
   assertDistinct,
   blockAt,
   checkZone,
+  emit,
   endGame,
   isHiddenAt,
   isRevealedAt,
@@ -57,10 +58,13 @@ export function hideZones(s: GameState, zones: number[], max: number, opts: { mi
     if (opts.exclude?.includes(z)) fail(`El bloque de la zona ${z} no se puede ocultar con este efecto`);
   }
   for (const z of zones) s.spaces[z].revealed = false;
+  emit(s, { k: 'hide', zones: [...zones] });
 }
 
 export function hideAll(s: GameState) {
+  const zones = s.spaces.map((sp, z) => (sp.block && sp.revealed ? z : -1)).filter((z) => z >= 0);
   for (const sp of s.spaces) if (sp.block) sp.revealed = false;
+  emit(s, { k: 'hide', zones });
 }
 
 /** Baraja los bloques de las zonas indicadas y los recoloca al azar en esas mismas zonas, ocultos. */
@@ -69,10 +73,12 @@ export function shuffleZones(s: GameState, zones: number[]) {
   shuffleInPlace(s, blocks);
   zones.forEach((z, i) => (s.spaces[z] = { block: blocks[i], revealed: false }));
   log(s, `El pulpo baraja ${zones.length} bloques.`);
+  emit(s, { k: 'shuffle', zones: [...zones] });
 }
 
 function swapZones(s: GameState, a: number, b: number) {
   [s.spaces[a], s.spaces[b]] = [s.spaces[b], s.spaces[a]];
+  emit(s, { k: 'swap', a, b });
 }
 
 /** Un bloque revelado que puede cambiarse por uno nuevo (ni el pulpo ni la comida). */
@@ -88,6 +94,7 @@ function checkReplaceable(s: GameState, zone: number | undefined): number {
 function placeNewBlock(s: GameState, blockId: string, zone: number) {
   s.pulpo.aside.push(s.spaces[zone].block!);
   s.spaces[zone] = { block: blockId, revealed: true };
+  emit(s, { k: 'newBlock', zone });
 }
 
 // ---------------- Efectos ----------------
@@ -189,7 +196,9 @@ function eat(s: GameState, food: FoodId) {
   if (fz < 0) fail(`${FOOD_NAMES[food]} no está en el tablero (apréndela primero)`);
   const pz = octopusZone(s);
   if (!areAdjacent(fz, pz)) fail('El pulpo debe estar ortogonalmente adyacente a la comida');
+  if (!s.spaces[pz].revealed) emit(s, { k: 'reveal', zones: [pz] });
   s.spaces[pz].revealed = true;
+  emit(s, { k: 'eat', zone: fz });
   const shell = newBlock(s, { kind: 'concha' });
   s.spaces[fz] = { block: shell, revealed: true };
   s.pulpo.foodTrack.push(food);
@@ -213,6 +222,7 @@ function pay(s: GameState, cost: number, zones: number[]) {
   if (total < cost) fail(`El coste es ${cost}: debes revelar más bloques`);
   if (zones.length > 0 && total - minVal >= cost) fail(`El coste es ${cost}: estás revelando bloques de más`);
   for (const z of zones) s.spaces[z].revealed = true;
+  emit(s, { k: 'reveal', zones: [...zones] });
 }
 
 // ---------------- Acciones ----------------

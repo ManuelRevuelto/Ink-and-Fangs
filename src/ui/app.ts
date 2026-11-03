@@ -2,7 +2,8 @@ import { aiAct } from '../ai';
 import { LAIRS } from '../data/board';
 import { actors, newGame, tryAction, viewFor, type GameState, type Role } from '../engine';
 import { ask, Cancel, currentSpec, offer, onAskChange } from './ask';
-import { drawBoard, hitTest, SIZE } from './board';
+import { drawBoard, hitTest, SIZE, type Fx } from './board';
+import { stepsFor } from './replay';
 import { nextAction, resetTentative, UiError } from './flows';
 import { pickFromEvent, renderLog, renderOctopusPanel, renderPromptBar, renderSharkPanel } from './panels';
 import type { Pick } from './ask';
@@ -21,23 +22,72 @@ let error: string | null = null;
 let waiting: string | null = null;
 let hover: Pick | null = null;
 let gameToken = 0;
+let fx: Fx | null = null;
+let animating = false;
+let skipAnim = false;
+let animSpeed = 1; // 0 = sin animaciones (tests)
+let seen: Record<Role, number> = { pulpo: 0, tiburon: 0 }; // eventos ya vistos por cada jugador
+
+/** Velocidad de las animaciones (0 las desactiva). */
+export function setAnimationSpeed(speed: number) {
+  animSpeed = speed;
+}
 
 const isAI = (r: Role) => mode.kind === 'ai' && mode.human !== r;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // ---------------- Render ----------------
 
+function renderBoard() {
+  if (!state) return;
+  const ctx = $<HTMLCanvasElement>('board').getContext('2d')!;
+  drawBoard(ctx, viewFor(state, viewer), animating ? null : currentSpec(), hover, fx);
+}
+
 function render() {
   if (!state) return;
   const v = viewFor(state, viewer);
-  const spec = currentSpec();
-  const ctx = $<HTMLCanvasElement>('board').getContext('2d')!;
-  drawBoard(ctx, v, spec, hover);
+  const spec = animating ? null : currentSpec();
+  renderBoard();
   $('pulpo-panel').innerHTML = renderOctopusPanel(v, spec);
   $('tiburon-panel').innerHTML = renderSharkPanel(v, spec);
-  $('prompt-bar').innerHTML = renderPromptBar(spec, error, waiting);
+  $('prompt-bar').innerHTML =
+    renderPromptBar(spec, error, waiting) + (animating ? '<button id="skip-anim">⏩ Saltar animación</button>' : '');
   $('log').innerHTML = renderLog(v);
   $('viewer').textContent = `Estás viendo como: ${ROLE_NAME[viewer]}`;
+}
+
+// ---------------- Animaciones ----------------
+
+/** Reproduce en el tablero los eventos que `role` aún no ha visto. */
+async function replayFor(role: Role, token: number) {
+  if (!state) return;
+  const events = state.events.slice(seen[role]);
+  seen[role] = state.events.length;
+  if (!events.length || animSpeed === 0) return;
+  animating = true;
+  skipAnim = false;
+  const prevWaiting = waiting;
+  for (const ev of events) {
+    for (const step of stepsFor(ev)) {
+      if (skipAnim || token !== gameToken) break;
+      waiting = step.caption;
+      render();
+      const ms = step.ms / animSpeed;
+      const start = performance.now();
+      while (!skipAnim && token === gameToken) {
+        const t = (performance.now() - start) / ms;
+        if (t >= 1) break;
+        fx = step.fx(t);
+        renderBoard();
+        await sleep(33);
+      }
+    }
+  }
+  fx = null;
+  animating = false;
+  waiting = prevWaiting;
+  render();
 }
 
 // ---------------- Pantallas ----------------
@@ -92,6 +142,7 @@ async function startGame() {
   const seed = Math.floor(Math.random() * 2 ** 31);
   resetTentative();
   error = null;
+  seen = { pulpo: 0, tiburon: 0 };
 
   // El pulpo elige la guarida inicial del tiburón.
   let sharkLair: number | undefined;
@@ -105,6 +156,7 @@ async function startGame() {
   }
   state = newGame({ seed, sharkLair });
   viewer = mode.kind === 'ai' ? mode.human : 'pulpo';
+  seen = { pulpo: state.events.length, tiburon: state.events.length };
   render();
   await gameLoop(token);
 }
@@ -118,6 +170,7 @@ async function gameLoop(token: number) {
       await sleep(AI_DELAY_MS);
       if (token !== gameToken) return;
       state = aiAct(state, role);
+      if (mode.kind === 'ai') await replayFor(mode.human, token);
       continue;
     }
     if (mode.kind === 'local' && viewer !== role) {
@@ -125,6 +178,7 @@ async function gameLoop(token: number) {
       $('game').classList.add('curtain');
       await passScreen(role);
       $('game').classList.remove('curtain');
+      await replayFor(role, token); // resumen de lo que hizo el rival
     }
     viewer = role;
     waiting = null;
@@ -135,6 +189,7 @@ async function gameLoop(token: number) {
       const res = tryAction(state, role, action);
       if (res.ok) {
         state = res.state;
+        seen[role] = state.events.length; // lo propio no se reanima
         error = null;
       } else error = res.error;
     } catch (e) {
@@ -183,6 +238,10 @@ export function initApp() {
     if (p) offer(p);
   });
   document.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('#skip-anim')) {
+      skipAnim = true;
+      return;
+    }
     if ((e.target as HTMLElement).closest('#board')) return;
     const p = pickFromEvent(e);
     if (p) offer(p);

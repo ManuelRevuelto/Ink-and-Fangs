@@ -43,7 +43,8 @@ function options(r: () => number): Pick | null {
 
 describe('interfaz', () => {
   it('se puede jugar una partida a 2 jugadores pulsando opciones', async () => {
-    const { initApp } = await import('../src/ui/app');
+    const { initApp, setAnimationSpeed } = await import('../src/ui/app');
+    setAnimationSpeed(0);
     initApp();
     await flush();
     const r = mulberry(7);

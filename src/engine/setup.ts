@@ -76,6 +76,7 @@ export function newGame(opts: NewGameOptions = {}): GameState {
     winner: null,
     winReason: null,
     log: [],
+    events: [],
   };
 
   // --- Tiburón: mazo y mercado ---
