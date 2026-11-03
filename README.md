@@ -16,6 +16,7 @@ mientras un **tiburón** lo caza tirando dados para nadar, buscar y atacar.
 npm install
 npm run dev      # abre http://localhost:5173
 npm test         # tests de reglas, simulación de partidas e interfaz
+npm run torneo   # torneo IA contra IA: % de victorias de cada papel (para equilibrar cartas)
 npm run build    # versión para publicar en dist/
 ```
 
