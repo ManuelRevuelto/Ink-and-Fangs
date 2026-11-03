@@ -94,3 +94,33 @@ describe('niveles de dificultad', () => {
     expect(d).toBeGreaterThan(n);
   }, 600_000);
 });
+
+describe('juego limpio de la IA', () => {
+  it('el tiburón no hace trampa: mover al pulpo a escondidas no cambia lo que ve ni lo que decide', async () => {
+    const { sharkDecide } = await import('../src/ai/sharkAI');
+    const { octopusZone } = await import('../src/engine/helpers');
+    let checks = 0;
+    for (let seed = 1; seed <= 25; seed++) {
+      let s = newGame({ seed });
+      const r = mulberry(seed);
+      for (let i = 0; i < 4000 && !s.winner; i++) {
+        const role: Role = actors(s)[0];
+        const pz = octopusZone(s);
+        if (role === 'tiburon' && !s.pending && !s.spaces[pz].revealed) {
+          for (let z = 0; z < 9; z++) {
+            if (z === pz || !s.spaces[z].block || s.spaces[z].revealed) continue;
+            const alt: GameState = structuredClone(s);
+            [alt.spaces[pz], alt.spaces[z]] = [alt.spaces[z], alt.spaces[pz]];
+            const v1 = viewFor(s, 'tiburon');
+            const v2 = viewFor(alt, 'tiburon');
+            expect(JSON.stringify(v2)).toBe(JSON.stringify(v1));
+            expect(sharkDecide(v2)).toEqual(sharkDecide(v1));
+            checks++;
+          }
+        }
+        s = aiAct(s, role, r);
+      }
+    }
+    expect(checks).toBeGreaterThan(1000);
+  }, 300_000);
+});
