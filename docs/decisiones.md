@@ -13,6 +13,10 @@ Registro de lo que hemos decidido cuando las reglas dejaban dudas. El motor impl
 - **Acción «descartar 1 y ocultar 1»:** la carta va a la pila de descarte (no sale del juego).
 - **Efectos que dicen «descartar/deshacer una carta»:** esa carta sale del juego.
 - **Cartas de comer:** al usarse se gastan para siempre: salen de la partida (no van al descarte ni se vuelven a robar).
+- **Comer cuesta 1 acción** (de las 2 del turno).
+- **El poder de la comida se aplica automáticamente al comérsela** (no se guarda para después ni gasta acción):
+  cangrejo (mano 5 y robar) y langosta (ocultar todo) al momento; caracol (buscar una carta) y
+  abulón (aprender hasta 3) piden la elección en ese mismo instante.
 - Conchas de repuesto (al comer): ilimitadas.
 - Al aprender un bloque, se cambia por un bloque revelado del tablero que no sea el pulpo ni comida.
 

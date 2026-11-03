@@ -1,5 +1,5 @@
 import { BOARD, LAIRS, nextCurrents } from '../data/board';
-import { octoCard, type FoodId, type OctoPile } from '../data/octopusCards';
+import { octoCard, type OctoPile } from '../data/octopusCards';
 import { payValue } from '../engine/helpers';
 import type { Action, Block, EffectParams, LearnPick } from '../engine/types';
 import { HIDDEN, type PlayerView } from '../engine/view';
@@ -273,35 +273,13 @@ function cardCandidates(c: Ctx, card: string): Scored[] {
   return out;
 }
 
-function foodCandidates(c: Ctx): Scored[] {
-  const P = c.v.pulpo;
-  return P.foodTrack
-    .filter((f) => !P.foodUsed.includes(f))
-    .flatMap((food: FoodId): Scored[] => {
-      switch (food) {
-        case 'cangrejo':
-        case 'langosta':
-          return [{ score: 80, action: { type: 'comida', food } }];
-        case 'caracol': {
-          const all = [...P.deck, ...P.discard].filter((x) => x !== HIDDEN);
-          const best = all.sort((a, b) => cardValue(b) - cardValue(a))[0];
-          return best ? [{ score: 80, action: { type: 'comida', food, params: { card: best } } }] : [];
-        }
-        case 'abulon': {
-          const plan = planLearn(c, 3, false);
-          return plan ? [{ score: 80, action: { type: 'comida', food, params: { picks: plan.picks } } }] : [];
-        }
-      }
-    });
-}
-
 export function octopusDecide(v: PlayerView, params: OctoParams = OCTO_NORMAL): Action[] {
   K = params;
   const c = context(v);
   if (v.pending) return pendingDecision(c);
 
   const P = v.pulpo;
-  const out: Scored[] = [...foodCandidates(c)];
+  const out: Scored[] = [];
 
   if (P.actionsUsed >= 2) {
     out.push({ score: 0, action: { type: 'finTurno' } });
@@ -364,6 +342,16 @@ function pendingDecision(c: Ctx): Action[] {
           return [{ type: 'resolverTrampa', lair: farLair(c) }];
       }
       break;
+    case 'comida': {
+      // Poder de la comida que pide elegir: el caracol busca la mejor carta; el abulón aprende lo mejor.
+      if (p.food === 'caracol') {
+        const all = [...c.v.pulpo.deck, ...c.v.pulpo.discard].filter((x) => x !== HIDDEN);
+        const best = [...all].sort((a, b) => cardValue(b) - cardValue(a))[0];
+        return best ? [{ type: 'resolverComida', card: best }] : [];
+      }
+      const plan = planLearn(c, 3, false);
+      return [{ type: 'resolverComida', picks: plan?.picks ?? [] }, { type: 'resolverComida', picks: [] }];
+    }
     case 'huida': {
       if (p.color === 'amarillo') {
         const others = ZONES.filter((z) => z !== c.pz && c.hidden(z)).sort((a, b) => c.P[a] - c.P[b]).slice(0, 2);

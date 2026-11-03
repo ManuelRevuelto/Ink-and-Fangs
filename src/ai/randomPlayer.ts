@@ -37,6 +37,10 @@ export function randomCandidates(v: PlayerView, r: Rand, tries = 40): Action[] {
     if (p.type === 'enfrentamiento') {
       const own = v.me === 'pulpo' ? v.pulpo.confrontation : v.tiburon.confrontation;
       for (const c of sample(r, own.length ? own : CONF_COLORS, 3)) out.push({ type: 'enfrentar', color: c });
+    } else if (p.type === 'comida') {
+      const cards = [...v.pulpo.deck, ...v.pulpo.discard].filter((c) => c !== HIDDEN);
+      for (let i = 0; i < 5; i++) out.push({ type: 'resolverComida', card: cards.length ? pick(r, cards) : undefined, picks: randomPicks(v, r, 3) });
+      out.push({ type: 'resolverComida', picks: [] });
     } else if (p.type === 'observador') {
       out.push({ type: 'observador', use: r() < 0.5 }, { type: 'observador', use: false });
     } else {
@@ -74,9 +78,6 @@ export function randomCandidates(v: PlayerView, r: Rand, tries = 40): Action[] {
         if (e.kind === 'learn') params.picks = randomPicks(v, r, e.n);
         out.push({ type: 'jugar', card, pay, params });
       }
-    }
-    for (const food of P.foodTrack.filter((f) => !P.foodUsed.includes(f))) {
-      out.unshift({ type: 'comida', food, params: { picks: randomPicks(v, r, 3), card: [...P.discard][0] } });
     }
     out.push({ type: 'robar' });
     if (P.hand.length) out.push({ type: 'descartarOcultar', card: P.hand[0] });

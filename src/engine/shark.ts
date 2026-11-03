@@ -18,7 +18,7 @@ import {
   toHunger,
 } from './helpers';
 import { facingAfter, legalPaths, sharedVertex } from './movement';
-import { hideAll, hideZones, shuffleZones } from './octopus';
+import { hideAll, hideZones, resolveFoodPower, shuffleZones } from './octopus';
 import { nextInt, rollD6 } from './rng';
 import type { Die, GameState, PendingAction, Phase, Role, SharkAction, TrapId } from './types';
 import { fail } from './types';
@@ -430,6 +430,9 @@ export function pendingAction(s: GameState, role: Role, a: PendingAction) {
       }
       break;
     }
+    case 'resolverComida':
+      resolveFoodPower(s, a);
+      break;
     case 'resolverHuida': {
       if (pend.type !== 'huida') fail('No hay ninguna huida que resolver');
       if (pend.color === 'amarillo') {

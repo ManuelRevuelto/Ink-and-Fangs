@@ -1,6 +1,6 @@
 import { BOARD, LAIRS } from '../data/board';
 import { OCTO_CONFRONTATION, SHARK_CONFRONTATION } from '../data/confrontation';
-import { FOOD_NAMES, octoCard, type FoodId, type OctoPile } from '../data/octopusCards';
+import { octoCard, type OctoPile } from '../data/octopusCards';
 import { ENERGY_SLOTS, SHARK_CARD_BY_ID } from '../data/sharkCards';
 import { payValue } from '../engine/helpers';
 import { legalPaths } from '../engine/movement';
@@ -34,19 +34,17 @@ function blockOf(v: PlayerView, z: number) {
 
 async function octopusFlow(v: PlayerView): Promise<Action> {
   const P = v.pulpo;
-  const foods = P.foodTrack.filter((f) => !P.foodUsed.includes(f));
   const done = P.actionsUsed >= 2;
   const buttons: Button[] = [];
   if (done) buttons.push({ label: 'Terminar turno', value: 'fin', primary: true });
   else if (P.hand.length < P.handSize) buttons.push({ label: `Robar hasta ${P.handSize} cartas`, value: 'robar' });
 
   const prompt = done
-    ? 'Has hecho tus 2 acciones. Puedes usar el poder de una comida o terminar el turno.'
-    : `Acción ${P.actionsUsed + 1} de 2: pulsa una carta de tu mano${buttons.length ? ' o roba' : ''}.${foods.length ? ' También puedes usar una comida.' : ''}`;
-  const p = await ask({ prompt, cards: done ? [] : P.hand, foods, buttons });
+    ? 'Has hecho tus 2 acciones: termina el turno.'
+    : `Acción ${P.actionsUsed + 1} de 2: pulsa una carta de tu mano${buttons.length ? ' o roba' : ''}.`;
+  const p = await ask({ prompt, cards: done ? [] : P.hand, buttons });
 
   if (p.kind === 'button') return p.value === 'fin' ? { type: 'finTurno' } : { type: 'robar' };
-  if (p.kind === 'food') return foodFlow(v, p.food);
   if (p.kind !== 'card') throw new UiError('Selección inesperada');
 
   const card = p.id;
@@ -179,7 +177,13 @@ async function pickUpTo(v: PlayerView, base: object, max: number, cand: number[]
   return zones;
 }
 
-async function learnFlow(v: PlayerView, n: number, isRevealed: (z: number) => boolean, base: object): Promise<LearnPick[]> {
+async function learnFlow(
+  v: PlayerView,
+  n: number,
+  isRevealed: (z: number) => boolean,
+  base: object,
+  opts: { allowNone?: boolean; title?: string } = {},
+): Promise<LearnPick[]> {
   const P = v.pulpo;
   const picks: LearnPick[] = [];
   const taken: Record<string, number> = {};
@@ -202,10 +206,13 @@ async function learnFlow(v: PlayerView, n: number, isRevealed: (z: number) => bo
     const piles = (Object.keys(P.piles) as OctoPile[]).filter((k) => P.piles[k].length > (taken[k] ?? 0));
     const p = await ask({
       ...base,
-      prompt: `Aprender (${picks.length + 1} de ${n}): pulsa un montón para coger su carta de arriba, o un bloque disponible.`,
+      prompt: `${opts.title ?? 'Aprender'} (${picks.length + 1} de ${n}): pulsa un montón para coger su carta de arriba, o un bloque disponible.`,
       piles,
       supply: P.supply.filter((id) => !usedSupply.includes(id)),
-      buttons: [...(picks.length ? [DONE('Terminar de aprender')] : []), CANCEL],
+      buttons: [
+        ...(picks.length ? [DONE('Terminar de aprender')] : opts.allowNone ? [DONE('No aprender nada')] : []),
+        ...(opts.allowNone ? [] : [CANCEL]),
+      ],
     });
     if (p.kind === 'button') break;
     if (p.kind === 'pile') {
@@ -219,27 +226,6 @@ async function learnFlow(v: PlayerView, n: number, isRevealed: (z: number) => bo
     }
   }
   return picks;
-}
-
-async function foodFlow(v: PlayerView, food: FoodId): Promise<Action> {
-  const name = FOOD_NAMES[food];
-  if (food === 'caracol') {
-    const cards = [...new Set([...v.pulpo.deck, ...v.pulpo.discard])];
-    if (!cards.length) throw new UiError('No hay cartas en tu mazo ni en tu descarte');
-    const card = await choose(`${name}: elige una carta de tu mazo o descarte para llevarla a la mano.`, [
-      ...cards.map((c) => ({ label: octoCard(c).name, value: c })),
-      CANCEL,
-    ]);
-    return { type: 'comida', food, params: { card } };
-  }
-  if (food === 'abulon') {
-    const isRevealed = (z: number) => !!v.spaces[z].block && v.spaces[z].revealed;
-    const picks = await learnFlow(v, 3, isRevealed, { prompt: '' });
-    return { type: 'comida', food, params: { picks } };
-  }
-  const text = food === 'cangrejo' ? 'Tu mano pasa a 5 cartas y robas hasta completarla.' : 'Ocultas todos tus bloques revelados.';
-  await choose(`${name}: ${text}`, [{ label: 'Usar', value: 'ok', primary: true }, CANCEL]);
-  return { type: 'comida', food };
 }
 
 // =====================================================================
@@ -579,6 +565,17 @@ async function pendingFlow(v: PlayerView, p: Pending): Promise<Action> {
         : '⚔️ ¡Has atacado al pulpo! Elige en secreto qué estrategia contrarrestas.';
       const color = await choose(prompt, mine.map((c) => ({ label: `${names[c].name} — ${names[c].text}`, value: c, color: colors[c] })));
       return { type: 'enfrentar', color: color as 'amarillo' | 'rojo' | 'gris' };
+    }
+    case 'comida': {
+      if (p.food === 'caracol') {
+        const cards = [...new Set([...v.pulpo.deck, ...v.pulpo.discard])];
+        const card = await choose('🐌 ¡Poder del caracol marino! Elige una carta de tu mazo o descarte para llevártela a la mano.',
+          cards.map((c) => ({ label: octoCard(c).name, value: c })));
+        return { type: 'resolverComida', card };
+      }
+      const isRevealed = (z: number) => !!v.spaces[z].block && v.spaces[z].revealed;
+      const picks = await learnFlow(v, 3, isRevealed, {}, { allowNone: true, title: '🦪 ¡Poder del abulón! Aprende gratis' });
+      return { type: 'resolverComida', picks };
     }
     case 'huida': {
       if (p.color === 'amarillo') {

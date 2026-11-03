@@ -9,8 +9,8 @@ export { viewFor, HIDDEN } from './view';
 export type { PlayerView } from './view';
 export { legalPaths } from './movement';
 
-const PENDING_TYPES = new Set(['resolverTrampa', 'observador', 'enfrentar', 'resolverHuida']);
-const OCTOPUS_TYPES = new Set(['jugar', 'robar', 'descartarOcultar', 'comida', 'finTurno']);
+const PENDING_TYPES = new Set(['resolverTrampa', 'observador', 'enfrentar', 'resolverHuida', 'resolverComida']);
+const OCTOPUS_TYPES = new Set(['jugar', 'robar', 'descartarOcultar', 'finTurno']);
 
 /** Quién debe decidir ahora. */
 export function actors(s: GameState): Role[] {

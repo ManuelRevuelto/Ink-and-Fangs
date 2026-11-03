@@ -240,3 +240,60 @@ describe('cartas de comer', () => {
     expect([...s.pulpo.discard, ...s.pulpo.deck, ...s.pulpo.hand]).not.toContain('comer-langosta#1');
   });
 });
+
+describe('poder de la comida (automático al comer)', () => {
+  /** Partida con la comida indicada junto al pulpo y su carta de comer en la mano. */
+  function readyToEat(food: 'cangrejo' | 'langosta' | 'caracol' | 'abulon') {
+    const s = newGame({ seed: 11 });
+    const block = Object.values(s.blocks).find((b) => b.kind === 'comida' && b.food === food)!;
+    const pz = octopusZone(s);
+    const fz = BOARD.zones[pz].adjacentZones[0];
+    s.spaces[fz] = { block: block.id, revealed: false };
+    s.pulpo.hand = [`comer-${food}#1`, 'camuflaje#1'];
+    return applyAction(s, 'pulpo', { type: 'jugar', card: `comer-${food}#1`, pay: [] });
+  }
+
+  it('comer gasta 1 acción (no el turno entero)', () => {
+    const s = readyToEat('cangrejo');
+    expect(s.pulpo.actionsUsed).toBe(1);
+    expect(tryAction(s, 'pulpo', { type: 'descartarOcultar', card: 'camuflaje#1' }).ok).toBe(true);
+  });
+
+  it('cangrejo: la mano pasa a 5 y se roba al momento, sin pedir nada', () => {
+    const s = readyToEat('cangrejo');
+    expect(s.pending).toBeNull();
+    expect(s.pulpo.handSize).toBe(5);
+    // Roba hasta 5 (o hasta quedarse sin cartas en el mazo y el descarte).
+    const left = s.pulpo.deck.length + s.pulpo.discard.length;
+    expect(s.pulpo.hand.length === 5 || left === 0).toBe(true);
+    expect(s.pulpo.hand.length).toBeGreaterThan(1);
+    expect(s.pulpo.foodUsed).toContain('cangrejo');
+  });
+
+  it('langosta: se ocultan todos los bloques al momento (también el pulpo)', () => {
+    const s = readyToEat('langosta');
+    expect(s.pending).toBeNull();
+    expect(s.spaces.every((sp) => !sp.revealed)).toBe(true);
+  });
+
+  it('caracol: pide elegir una carta del mazo o descarte y la lleva a la mano', () => {
+    let s = readyToEat('caracol');
+    expect(s.pending).toEqual({ type: 'comida', role: 'pulpo', food: 'caracol' });
+    expect(tryAction(s, 'pulpo', { type: 'robar' }).ok).toBe(false); // primero hay que resolver el poder
+    const wanted = s.pulpo.deck[0];
+    s = applyAction(s, 'pulpo', { type: 'resolverComida', card: wanted });
+    expect(s.pending).toBeNull();
+    expect(s.pulpo.hand).toContain(wanted);
+    expect(s.pulpo.foodUsed).toContain('caracol');
+  });
+
+  it('abulón: pide qué aprender (hasta 3, o nada)', () => {
+    let s = readyToEat('abulon');
+    expect(s.pending?.type).toBe('comida');
+    const before = s.pulpo.discard.length;
+    s = applyAction(s, 'pulpo', { type: 'resolverComida', picks: [{ kind: 'card', pile: 'moverse' }, { kind: 'card', pile: 'ocultar' }] });
+    expect(s.pending).toBeNull();
+    expect(s.pulpo.discard.length).toBe(before + 2);
+    expect(tryAction(readyToEat('abulon'), 'pulpo', { type: 'resolverComida', picks: [] }).ok).toBe(true);
+  });
+});

@@ -42,9 +42,8 @@ export function renderOctopusPanel(v: PlayerView, spec: AskSpec | null): string 
   const foods = (['cangrejo', 'langosta', 'caracol', 'abulon'] as FoodId[]).map((_, i) => {
     const f = P.foodTrack[i];
     if (!f) return `<span class="slot">·</span>`;
-    const p: Pick = { kind: 'food', food: f };
-    const used = P.foodUsed.includes(f);
-    return `<span class="slot food ${used ? 'used' : ''} ${cls(p)}" ${pickAttr(p)} title="${FOOD_NAMES[f]}${used ? ' (usado)' : ''}">${FOOD_ICON[f]}</span>`;
+    // El poder de cada comida se aplica solo al comérsela: aquí solo se muestra lo que lleva comido.
+    return `<span class="slot food" title="${FOOD_NAMES[f]} (comida)">${FOOD_ICON[f]}</span>`;
   });
   const piles = (Object.keys(P.piles) as OctoPile[]).map((pile) => {
     const top = P.piles[pile][0];

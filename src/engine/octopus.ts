@@ -204,6 +204,63 @@ function eat(s: GameState, food: FoodId) {
   s.pulpo.foodTrack.push(food);
   log(s, `🐙 ¡El pulpo se come: ${FOOD_NAMES[food]}! (${s.pulpo.foodTrack.length}/${FOOD_TO_WIN})`);
   if (s.pulpo.foodTrack.length >= FOOD_TO_WIN) endGame(s, 'pulpo', 'se ha comido toda la comida');
+  else triggerFoodPower(s, food);
+}
+
+/**
+ * El poder de la comida se activa SOLO al comérsela (no gasta acción).
+ * Cangrejo y langosta se aplican al momento; caracol y abulón piden una elección al pulpo.
+ */
+function triggerFoodPower(s: GameState, food: FoodId) {
+  const p = s.pulpo;
+  switch (food) {
+    case 'cangrejo':
+      p.handSize = 5;
+      drawToHandSize(s);
+      return foodPowerDone(s, food, 'su mano pasa a 5 cartas');
+    case 'langosta':
+      hideAll(s);
+      return foodPowerDone(s, food, 'oculta todos sus bloques');
+    case 'caracol':
+      if (p.deck.length + p.discard.length === 0) return foodPowerDone(s, food, 'no hay cartas que buscar');
+      s.pending = { type: 'comida', role: 'pulpo', food };
+      return;
+    case 'abulon':
+      s.pending = { type: 'comida', role: 'pulpo', food };
+      return;
+  }
+}
+
+function foodPowerDone(s: GameState, food: FoodId, what: string) {
+  s.pulpo.foodUsed.push(food);
+  log(s, `✨ Poder de ${FOOD_NAMES[food]}: ${what}.`);
+}
+
+/** Respuesta del pulpo al poder del caracol (qué carta busca) o del abulón (qué aprende, hasta 3). */
+export function resolveFoodPower(s: GameState, params: { card?: string; picks?: LearnPick[] }) {
+  const pend = s.pending;
+  if (pend?.type !== 'comida') fail('No hay ningún poder de comida pendiente');
+  const p = s.pulpo;
+  if (pend.food === 'caracol') {
+    const card = params.card;
+    if (!card) fail('Elige la carta que buscas');
+    let i = p.deck.indexOf(card);
+    if (i >= 0) {
+      p.deck.splice(i, 1);
+      shuffleInPlace(s, p.deck);
+    } else {
+      i = p.discard.indexOf(card);
+      if (i < 0) fail('Esa carta no está en tu mazo ni en tu descarte');
+      p.discard.splice(i, 1);
+    }
+    p.hand.push(card);
+    foodPowerDone(s, 'caracol', `busca «${octoCard(card).name}» y la pone en su mano`);
+  } else {
+    const picks = params.picks ?? [];
+    if (picks.length) learn(s, picks, 3, false);
+    foodPowerDone(s, 'abulon', picks.length ? `aprende ${picks.length} gratis` : 'no aprende nada');
+  }
+  s.pending = null;
 }
 
 // ---------------- Pago ----------------
@@ -265,8 +322,6 @@ export function octopusAction(s: GameState, a: OctopusAction) {
       log(s, `El pulpo descarta una carta${a.hide !== undefined ? ' y oculta un bloque' : ''}.`);
       return;
     }
-    case 'comida':
-      return activateFood(s, a.food, a.params);
     case 'finTurno': {
       if (p.actionsUsed < ACTIONS_PER_TURN) fail('Debes hacer 2 acciones antes de terminar');
       p.discard.push(...p.played);
@@ -274,39 +329,4 @@ export function octopusAction(s: GameState, a: OctopusAction) {
       return;
     }
   }
-}
-
-function activateFood(s: GameState, food: FoodId, params: EffectParams = {}) {
-  const p = s.pulpo;
-  if (!p.foodTrack.includes(food)) fail('Aún no te has comido eso');
-  if (p.foodUsed.includes(food)) fail('Ya usaste el poder de esa comida');
-  switch (food) {
-    case 'cangrejo':
-      p.handSize = 5;
-      drawToHandSize(s);
-      break;
-    case 'langosta':
-      hideAll(s);
-      break;
-    case 'caracol': {
-      const card = params.card;
-      if (!card) fail('Elige la carta que buscas');
-      let i = p.deck.indexOf(card);
-      if (i >= 0) {
-        p.deck.splice(i, 1);
-        shuffleInPlace(s, p.deck);
-      } else {
-        i = p.discard.indexOf(card);
-        if (i < 0) fail('Esa carta no está en tu mazo ni en tu descarte');
-        p.discard.splice(i, 1);
-      }
-      p.hand.push(card);
-      break;
-    }
-    case 'abulon':
-      learn(s, params.picks, 3, false);
-      break;
-  }
-  p.foodUsed.push(food);
-  log(s, `El pulpo usa el poder de: ${FOOD_NAMES[food]}.`);
 }

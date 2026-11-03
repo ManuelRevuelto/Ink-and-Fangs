@@ -86,7 +86,8 @@ export type Pending =
   | { type: 'trampa'; role: 'pulpo'; trap: TrapId; zone: number }
   | { type: 'observador'; role: 'tiburon'; trap: TrapId; zone: number }
   | { type: 'enfrentamiento'; role: 'ambos'; die: Die; choices: Partial<Record<Role, ConfColor>> }
-  | { type: 'huida'; role: 'pulpo'; color: 'amarillo' | 'rojo'; die: Die };
+  | { type: 'huida'; role: 'pulpo'; color: 'amarillo' | 'rojo'; die: Die }
+  | { type: 'comida'; role: 'pulpo'; food: 'caracol' | 'abulon' }; // poder de la comida que pide elegir
 
 /**
  * Eventos visuales (públicos) para que la interfaz pueda animar lo que ha pasado.
@@ -143,7 +144,6 @@ export type OctopusAction =
   | { type: 'jugar'; card: string; pay: number[]; params?: EffectParams }
   | { type: 'robar' }
   | { type: 'descartarOcultar'; card: string; hide?: number }
-  | { type: 'comida'; food: FoodId; params?: EffectParams }
   | { type: 'finTurno' };
 
 export interface SharkCardParams {
@@ -169,7 +169,8 @@ export type PendingAction =
   | { type: 'resolverTrampa'; zones?: number[]; currents?: number[]; lair?: number }
   | { type: 'observador'; use: boolean; card?: string }
   | { type: 'enfrentar'; color: ConfColor }
-  | { type: 'resolverHuida'; zones?: number[]; lair?: number; currents?: number[] };
+  | { type: 'resolverHuida'; zones?: number[]; lair?: number; currents?: number[] }
+  | { type: 'resolverComida'; card?: string; picks?: LearnPick[] };
 
 export type Action = OctopusAction | SharkAction | PendingAction;
 
