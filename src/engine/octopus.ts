@@ -196,7 +196,7 @@ function eat(s: GameState, food: FoodId) {
   if (fz < 0) fail(`${FOOD_NAMES[food]} no está en el tablero (apréndela primero)`);
   const pz = octopusZone(s);
   if (!areAdjacent(fz, pz)) fail('El pulpo debe estar ortogonalmente adyacente a la comida');
-  if (!s.spaces[pz].revealed) emit(s, { k: 'reveal', zones: [pz] });
+  if (!s.spaces[pz].revealed) emit(s, { k: 'reveal', zones: [pz], octo: pz });
   s.spaces[pz].revealed = true;
   emit(s, { k: 'eat', zone: fz });
   const shell = newBlock(s, { kind: 'concha' });
@@ -222,7 +222,8 @@ function pay(s: GameState, cost: number, zones: number[]) {
   if (total < cost) fail(`El coste es ${cost}: debes revelar más bloques`);
   if (zones.length > 0 && total - minVal >= cost) fail(`El coste es ${cost}: estás revelando bloques de más`);
   for (const z of zones) s.spaces[z].revealed = true;
-  emit(s, { k: 'reveal', zones: [...zones] });
+  const octo = zones.find((z) => blockAt(s, z)?.kind === 'pulpo');
+  emit(s, { k: 'reveal', zones: [...zones], ...(octo !== undefined ? { octo } : {}) });
 }
 
 // ---------------- Acciones ----------------

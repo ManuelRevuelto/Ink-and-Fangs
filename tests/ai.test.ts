@@ -1,0 +1,67 @@
+import { describe, expect, it } from 'vitest';
+import { aiAct, aiErrors, BRAINS } from '../src/ai';
+import { octopusBelief } from '../src/ai/belief';
+import { actors, applyAction, newGame, viewFor, type GameState, type Role } from '../src/engine';
+import { mulberry } from './simulation';
+
+/** Partida completa entre IAs (los cerebros null juegan al azar). */
+function playAI(seed: number, brains = BRAINS, maxSteps = 5000): GameState {
+  let s = newGame({ seed });
+  const r = mulberry(seed);
+  for (let i = 0; i < maxSteps && !s.winner; i++) {
+    const role: Role = actors(s)[0];
+    s = aiAct(s, role, r, brains);
+  }
+  return s;
+}
+
+describe('deducción del tiburón', () => {
+  it('al principio el pulpo puede estar en cualquiera de las 9 zonas', () => {
+    const P = octopusBelief(viewFor(newGame({ seed: 1 }), 'tiburon'));
+    P.forEach((p) => expect(p).toBeCloseTo(1 / 9));
+  });
+
+  it('si ve al pulpo y luego se intercambia, la certeza viaja con el bloque', () => {
+    let s = newGame({ seed: 2 });
+    const pz = s.spaces.findIndex((sp) => s.blocks[sp.block!].kind === 'pulpo');
+    s.pulpo.hand = ['deslizarse#1', 'camuflaje#1'];
+    const other = [1, 3, 5, 7].includes(pz) ? 4 : pz === 4 ? 1 : pz === 0 ? 1 : pz === 2 ? 1 : 7;
+    // Paga revelando al pulpo, lo intercambia con un vecino y luego lo oculta.
+    s = applyAction(s, 'pulpo', { type: 'jugar', card: 'deslizarse#1', pay: [pz], params: { swaps: [[pz, other]] } });
+    s = applyAction(s, 'pulpo', { type: 'jugar', card: 'camuflaje#1', pay: [], params: { zones: [other] } });
+    const P = octopusBelief(viewFor(s, 'tiburon'));
+    expect(P[other]).toBeCloseTo(1);
+  });
+
+  it('barajar reparte la probabilidad entre los bloques barajados', () => {
+    let s = newGame({ seed: 4 });
+    s.pulpo.hand = ['remolino#1'];
+    s = applyAction(s, 'pulpo', { type: 'jugar', card: 'remolino#1', pay: [0, 1], params: { zones: [2, 3] } });
+    const P = octopusBelief(viewFor(s, 'tiburon'));
+    const shown = [0, 1].some((z) => s.blocks[s.spaces[z].block!].kind === 'pulpo');
+    if (!shown) {
+      expect(P[0]).toBe(0);
+      expect(P[2]).toBeCloseTo(P[3]);
+    }
+  });
+});
+
+describe('IA del tiburón', () => {
+  it('juega partidas completas sin proponer acciones ilegales', () => {
+    aiErrors.length = 0;
+    for (let seed = 1; seed <= 60; seed++) playAI(seed);
+    expect(aiErrors.slice(0, 5)).toEqual([]);
+  }, 120_000);
+
+  it('gana mucho más que un tiburón aleatorio contra un pulpo aleatorio', () => {
+    const N = 150;
+    let smart = 0;
+    let dumb = 0;
+    for (let seed = 1; seed <= N; seed++) {
+      if (playAI(seed).winner === 'tiburon') smart++;
+      if (playAI(seed, { tiburon: null, pulpo: null }).winner === 'tiburon') dumb++;
+    }
+    console.log(`Tiburón IA vs pulpo aleatorio: ${smart}/${N} · Tiburón aleatorio: ${dumb}/${N}`);
+    expect(smart).toBeGreaterThan(dumb + N * 0.2);
+  }, 300_000);
+});

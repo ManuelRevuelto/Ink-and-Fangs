@@ -130,7 +130,7 @@ export async function showMenu() {
       <button data-value="ai-pulpo">🤖 Contra la máquina: juego con el pulpo</button>
       <button data-value="ai-tiburon">🤖 Contra la máquina: juego con el tiburón</button>
     </div>
-    <p class="small">La máquina juega de momento al azar: la IA de verdad llegará en la siguiente fase.</p>`);
+    <p class="small">🦈 El tiburón de la máquina ya razona y te busca. El pulpo de la máquina aún juega al azar.</p>`);
   const choice = await waitButton(el);
   hideOverlay();
   mode = choice === 'local' ? { kind: 'local' } : { kind: 'ai', human: choice === 'ai-pulpo' ? 'pulpo' : 'tiburon' };

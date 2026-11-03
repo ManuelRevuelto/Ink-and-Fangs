@@ -287,7 +287,7 @@ export function processQueue(s: GameState) {
       continue;
     }
     const wasHidden = !s.spaces[zone].revealed;
-    emit(s, { k: 'search', zone, mode });
+    emit(s, { k: 'search', zone, mode, octo: b.kind === 'pulpo' });
     s.spaces[zone].revealed = true;
     const what = b.kind === 'trampa' ? `una trampa (${TRAP_NAMES[b.trap!]})` : b.kind === 'conchaDoble' ? 'una concha doble' : b.kind === 'comida' ? 'comida' : b.kind === 'pulpo' ? '¡EL PULPO!' : 'una concha';
     if (mode === 'buscar') {

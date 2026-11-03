@@ -93,7 +93,7 @@ export type Pending =
  * Nunca contienen información oculta: solo zonas/casillas, no qué bloque hay.
  */
 export type GameEvent =
-  | { k: 'reveal'; zones: number[] }
+  | { k: 'reveal'; zones: number[]; octo?: number } // octo: zona donde se vio al pulpo (si se reveló)
   | { k: 'hide'; zones: number[] }
   | { k: 'swap'; a: number; b: number }
   | { k: 'shuffle'; zones: number[] }
@@ -103,7 +103,7 @@ export type GameEvent =
   | { k: 'currentsRemoved'; currents: number[] }
   | { k: 'move'; from: number; fromFacing: number | null; path: number[] }
   | { k: 'teleport'; from: number; to: number }
-  | { k: 'search'; zone: number; mode: 'buscar' | 'atacar' };
+  | { k: 'search'; zone: number; mode: 'buscar' | 'atacar'; octo: boolean };
 
 export interface GameState {
   rng: number;
