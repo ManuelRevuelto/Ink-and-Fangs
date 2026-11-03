@@ -7,6 +7,8 @@ mientras un **tiburón** lo caza tirando dados para nadar, buscar y atacar.
 - **El pulpo gana** si se come las 4 comidas o si el tiburón se agota (7 dados de hambre).
 - **El tiburón gana** si ataca al pulpo y lo vence en el enfrentamiento.
 
+🎮 **Jugar:** https://ink-and-fangs.onrender.com/
+
 > 📌 **Estado actual, TODO pendiente y guía para retomar el desarrollo: [docs/ESTADO.md](docs/ESTADO.md)**
 
 ## Modos de juego

@@ -2,7 +2,7 @@
 
 > Documento para retomar el desarrollo otro día. Última actualización: **3 de noviembre de 2026**.
 > Repositorio: https://github.com/ManuelRevuelto/Ink-and-Fangs (rama `main`).
-> Publicado en **Render** (plan gratuito) a partir de `render.yaml`. La URL está en el panel de Render.
+> Publicado en **Render** (plan gratuito): **https://ink-and-fangs.onrender.com/**
 
 ---
 
@@ -159,7 +159,7 @@ Niveles (tiburón contra pulpo Normal, 100 partidas): Fácil ~11% · Normal ~45%
 ---
 
 ## 🌐 Publicación
-- **Render**, con el blueprint `render.yaml`. Build: `npm ci --include=dev && npm run build`. Start: `npm start`.
+- **https://ink-and-fangs.onrender.com/** en **Render**, con el blueprint `render.yaml`. Build: `npm ci --include=dev && npm run build`. Start: `npm start`.
   Health check: `/health`.
 - Cada push a `main` se publica solo.
 - Plan gratuito: se duerme tras unos 15 minutos sin uso (la primera visita tarda 30-60 s) y las
